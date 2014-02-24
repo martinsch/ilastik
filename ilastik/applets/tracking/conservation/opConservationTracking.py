@@ -112,7 +112,7 @@ class OpConservationTracking(OpTrackingBase):
         median_obj_size = [0]
 
         coordinate_map = pgmlink.TimestepIdCoordinateMap()
-        if withArmaCoordinates and False:
+        if withArmaCoordinates:
             coordinate_map.initialize()
         ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
@@ -167,7 +167,7 @@ class OpConservationTracking(OpTrackingBase):
                                          0,       # forbidden_cost
                                          float(ep_gap), # ep_gap
                                          float(median_obj_size[0]), # median_object_size
-                                         withTracklets,
+                                         False, #withTracklets,
                                          divWeight,
                                          transWeight,
                                          withDivisions,
@@ -187,7 +187,7 @@ class OpConservationTracking(OpTrackingBase):
                 
         iterations = self.NumIterations.value
         try:
-            eventsVector = tracker(ts, coordinate_map.get(), iterations)
+            eventsVector = tracker(ts, coordinate_map.get(), int(iterations), 0, 1)
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
