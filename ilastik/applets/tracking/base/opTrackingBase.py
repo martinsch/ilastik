@@ -15,7 +15,7 @@
 # Copyright 2011-2014, the ilastik developers
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.rtype import List
+from lazyflow.rtype import List, SubRegion
 from lazyflow.stype import Opaque
 
 import numpy as np
@@ -28,7 +28,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.valueProviders import OpZeroDefault
 
-from lazyflow.roi import sliceToRoi
+from lazyflow.roi import sliceToRoi, roiToSlice
 
 import logging
 logger = logging.getLogger(__name__)
@@ -39,10 +39,10 @@ class OpTrackingBase(Operator):
 
     LabelImage = InputSlot()
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)
-    EventsVector = InputSlot(value={})    
+    EventsVector = InputSlot(value={})
     FilteredLabels = InputSlot(value={})
     RawImage = InputSlot()
-    Parameters = InputSlot( value={} ) 
+    Parameters = InputSlot( value={} )
 
     # for serialization
     InputHdf5 = InputSlot(optional=True)
@@ -55,8 +55,8 @@ class OpTrackingBase(Operator):
     
     def __init__(self, parent=None, graph=None):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)        
-        self.label2color = []  
-        self.mergers = []
+        self.label2color = {}
+        self.mergers = {}
     
         self._opCache = OpCompressedCache( parent=self )        
         self._opCache.InputHdf5.connect( self.InputHdf5 )
@@ -66,7 +66,7 @@ class OpTrackingBase(Operator):
         self.CachedOutput.connect(self._opCache.Output)
         
         self.zeroProvider = OpZeroDefault( parent=self )
-        self.zeroProvider.MetaInput.connect( self.LabelImage )
+        self.zeroProvider.MetaInput.connect( self.Output )
             
         # As soon as input data is available, check its constraints
         self.RawImage.notifyReady( self._checkConstraints )
@@ -76,8 +76,14 @@ class OpTrackingBase(Operator):
     def setupOutputs(self):        
         self.Output.meta.assignFrom(self.LabelImage.meta)
         
+        if "NumIterations" in self.inputs and self.NumIterations.ready():
+            shape = list(self.LabelImage.meta.shape)
+            # assumes t,x,y,z,c
+            shape[-1] =  self.NumIterations.value
+            self.Output.meta.shape = tuple(shape)
+            
         #cache our own output, don't propagate from internal operator
-        chunks = list(self.LabelImage.meta.shape)
+        chunks = list(self.Output.meta.shape)
         # FIXME: assumes t,x,y,z,c
         chunks[0] = 1  # 't'        
         self._blockshape = tuple(chunks)
@@ -117,18 +123,28 @@ class OpTrackingBase(Operator):
             
     def execute(self, slot, subindex, roi, result):
         if slot is self.Output:
-            result = self.LabelImage.get(roi).wait()
+            croi_start = roi.start[:]
+            croi_stop = roi.stop[:]                        
+            
+            #assumes t,x,y,c,z
+            croi_start[-1] = 0
+            croi_stop[-1] = 1
+            croi = SubRegion(self.LabelImage, start=croi_start, stop=croi_stop)   
+            
+            result = np.zeros(roi.stop-roi.start)
+            li = self.LabelImage.get(croi).wait()
             if not self.Parameters.ready():
                 raise Exception("Parameter slot is not ready")        
             parameters = self.Parameters.value
             
             t_start = roi.start[0]
             t_end = roi.stop[0]
-            for t in range(t_start, t_end):
-                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]) and len(self.label2color) > t:                
-                    result[t-t_start, ..., 0] = relabel(result[t-t_start, ..., 0], self.label2color[t])
-                else:
-                    result[t-t_start,...] = 0
+            for ch in range(roi.start[-1], roi.stop[-1]):
+                for t in range(t_start, t_end):
+                    if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]) and ch in self.label2color.keys() and len(self.label2color[ch]) > t:                
+                        result[t-t_start, ..., ch] = relabel(li[t-t_start, ..., 0], self.label2color[ch][t])
+                    else:
+                        result[t-t_start,...,ch:(ch+1)] = 0
             return result         
         elif slot == self.AllBlocks:            
             # if nothing was computed, return empty list
@@ -153,6 +169,8 @@ class OpTrackingBase(Operator):
             self.Output.setDirty(roi)
         elif inputSlot is self.EventsVector:
             self._setLabel2Color()
+        elif "NumIterations" in self.inputs and inputSlot is self.NumIterations:
+            self.setupOutputs()
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.InputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
@@ -172,87 +190,95 @@ class OpTrackingBase(Operator):
 #         z_range = parameters['z_range']
 #         
         filtered_labels = self.FilteredLabels.value
-                                                    
-        label2color = []
-        label2color.append({})
-        mergers = []
-        mergers.append({})
         
-        maxId = 1 #  misdetections have id 1
-        
-        # handle start time offsets
-        for i in range(time_range[0]):            
-            label2color.append({})
-            mergers.append({})
-        
-        for i in time_range:
-            dis = get_dict_value(events[str(i-time_range[0]+1)], "dis", [])            
-            app = get_dict_value(events[str(i-time_range[0]+1)], "app", [])
-            div = get_dict_value(events[str(i-time_range[0]+1)], "div", [])
-            mov = get_dict_value(events[str(i-time_range[0]+1)], "mov", [])
-            merger = get_dict_value(events[str(i-time_range[0]+1)], "merger", [])
-            multi = get_dict_value(events[str(i-time_range[0]+1)], "multiMove", [])
+        if "NumIterations" in self.inputs and self.NumIterations.ready():
+            iterations = self.NumIterations.ready()
+        else:
+            iterations = 1
             
-            logger.info( " {} dis at {}".format( len(dis), i ) )
-            logger.info( " {} app at {}".format( len(app), i ) )
-            logger.info( " {} div at {}".format( len(div), i ) )
-            logger.info( " {} mov at {}".format( len(mov), i ) )
-            logger.info( " {} merger at {}\n".format( len(merger), i ) )
+        label2color = {}
+        mergers = {}
+        for key in range(iterations):                
+            label2color[key] = []
+            label2color[key].append({})
+            mergers[key] = []
+            mergers[key].append({})            
             
-            label2color.append({})
-            mergers.append({})
-            moves_at = []
-                        
-            for e in app:
-                if successive_ids:
-                    label2color[-1][e[0]] = maxId
-                    maxId += 1
-                else:
-                    label2color[-1][e[0]] = np.random.randint(1, 255)
-
-            for e in mov:                
-                if not label2color[-2].has_key(e[0]) or e[0] in moves_at:
-                    if successive_ids:
-                        label2color[-2][e[0]] = maxId
-                        maxId += 1
-                    else:
-                        label2color[-2][e[0]] = np.random.randint(1, 255)
-                label2color[-1][e[1]] = label2color[-2][e[0]]
-                moves_at.append(e[0])
-
-            for e in div:
-                if not label2color[-2].has_key(e[0]):
-                    if successive_ids:
-                        label2color[-2][e[0]] = maxId
-                        maxId += 1
-                    else:
-                        label2color[-2][e[0]] = np.random.randint(1, 255)
-                ancestor_color = label2color[-2][e[0]]
-                label2color[-1][e[1]] = ancestor_color
-                label2color[-1][e[2]] = ancestor_color
+        for it in range(iterations):
+            maxId = 1
+            # handle start time offsets
+            for i in range(time_range[0]):            
+                label2color[it].append({})
+                mergers[it].append({})
             
-            for e in merger:
-                mergers[-1][e[0]] = e[1]
-
-            for e in multi:
-                if int(e[2]) >= 0 and not label2color[int(e[2])].has_key(e[0]):
-                    if successive_ids:
-                        label2color[int(e[2])][e[0]] = maxId
-                        maxId += 1
-                    else:
-                        label2color[int(e[2])][e[0]] = np.random.randint(1, 255)
-                    print str(e[0]), 'was not in label2color[', e[2], ']'
-                label2color[-1][e[1]] = label2color[int(e[2])][e[0]]
+            for i in time_range:
+                dis = get_dict_value(events[it][str(i-time_range[0]+1)], "dis", [])            
+                app = get_dict_value(events[it][str(i-time_range[0]+1)], "app", [])
+                div = get_dict_value(events[it][str(i-time_range[0]+1)], "div", [])
+                mov = get_dict_value(events[it][str(i-time_range[0]+1)], "mov", [])
+                merger = get_dict_value(events[it][str(i-time_range[0]+1)], "merger", [])
+                multi = get_dict_value(events[it][str(i-time_range[0]+1)], "multiMove", [])
                 
-        # mark the filtered objects
-        for i in filtered_labels.keys():
-            if int(i)+time_range[0] >= len(label2color):
-                continue
-            fl_at = filtered_labels[i]
-            for l in fl_at:
-                assert l not in label2color[int(i)+time_range[0]]
-                label2color[int(i)+time_range[0]][l] = 0                
-
+                logger.info( " {} dis at {}".format( len(dis), i ) )
+                logger.info( " {} app at {}".format( len(app), i ) )
+                logger.info( " {} div at {}".format( len(div), i ) )
+                logger.info( " {} mov at {}".format( len(mov), i ) )
+                logger.info( " {} merger at {}\n".format( len(merger), i ) )
+                
+                label2color[it].append({})
+                mergers[it].append({})
+                moves_at = []
+                            
+                for e in app:
+                    if successive_ids:
+                        label2color[it][-1][e[0]] = maxId
+                        maxId += 1
+                    else:
+                        label2color[it][-1][e[0]] = np.random.randint(1, 255)
+    
+                for e in mov:                
+                    if not label2color[it][-2].has_key(e[0]) or e[0] in moves_at:
+                        if successive_ids:
+                            label2color[it][-2][e[0]] = maxId
+                            maxId += 1
+                        else:
+                            label2color[it][-2][e[0]] = np.random.randint(1, 255)
+                    label2color[it][-1][e[1]] = label2color[it][-2][e[0]]
+                    moves_at.append(e[0])
+    
+                for e in div:
+                    if not label2color[it][-2].has_key(e[0]):
+                        if successive_ids:
+                            label2color[it][-2][e[0]] = maxId
+                            maxId += 1
+                        else:
+                            label2color[it][-2][e[0]] = np.random.randint(1, 255)
+                    ancestor_color = label2color[it][-2][e[0]]
+                    label2color[it][-1][e[1]] = ancestor_color
+                    label2color[it][-1][e[2]] = ancestor_color
+                
+                for e in merger:
+                    mergers[it][-1][e[0]] = e[1]
+    
+                for e in multi:
+                    if int(e[2]) >= 0 and not label2color[it][int(e[2])].has_key(e[0]):
+                        if successive_ids:
+                            label2color[it][int(e[2])][e[0]] = maxId
+                            maxId += 1
+                        else:
+                            label2color[it][int(e[2])][e[0]] = np.random.randint(1, 255)
+                        print str(e[0]), 'was not in label2color[', e[2], ']'
+                    label2color[it][-1][e[1]] = label2color[it][int(e[2])][e[0]]
+                    
+            # mark the filtered objects
+            for i in filtered_labels.keys():
+                if int(i)+time_range[0] >= len(label2color[it]):
+                    continue
+                fl_at = filtered_labels[i]
+                for l in fl_at:
+                    assert l not in label2color[it][int(i)+time_range[0]]
+                    label2color[it][int(i)+time_range[0]][l] = 0                
+    
         self.label2color = label2color
         self.mergers = mergers        
         
@@ -262,7 +288,7 @@ class OpTrackingBase(Operator):
         if 'MergerOutput' in self.outputs:
             self.MergerOutput._value = None
             self.MergerOutput.setDirty(slice(None))            
-        
+            
 
     def _generate_traxelstore(self,
                                time_range,
@@ -302,7 +328,7 @@ class OpTrackingBase(Operator):
         
         if with_div:
             if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
-               raise Exception, "Classifier not yet ready. Did you forget to train the Division Detection Classifier?"
+                raise Exception, "Classifier not yet ready. Did you forget to train the Division Detection Classifier?"
             divProbs = self.DivisionProbabilities(time_range).wait()
         
         if with_local_centers:
@@ -310,7 +336,7 @@ class OpTrackingBase(Operator):
         
         if with_classifier_prior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
-               raise Exception, "Classifier not yet ready. Did you forget to train the Object Count Classifier?"
+                raise Exception, "Classifier not yet ready. Did you forget to train the Object Count Classifier?"
             detProbs = self.DetectionProbabilities(time_range).wait()
             
         logger.info( "filling traxelstore" )

@@ -111,19 +111,24 @@ class TrackingBaseGui( LayerViewerGui ):
             mergerLayer = ColortableLayer( self.mergersrc, ct )
             mergerLayer.name = "Merger"
             mergerLayer.visible = True
+            if "NumIterations" in self.topLevelOperatorView.inputs and self.topLevelOperatorView.NumIterations.ready():
+                mergerLayer.numberOfChannels = self.topLevelOperatorView.NumIterations.value
             layers.append(mergerLayer)     
             
         ct = colortables.create_random_16bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         ct[1] = QColor(128,128,128,255).rgba() # misdetections have id 1 and will be indicated by grey
-        
+                
         if self.topLevelOperatorView.CachedOutput.ready():            
             self.trackingsrc = LazyflowSource( self.topLevelOperatorView.CachedOutput )
             trackingLayer = ColortableLayer( self.trackingsrc, ct )
             trackingLayer.name = "Tracking"
-            trackingLayer.visible = True
+            trackingLayer.visible = True            
             trackingLayer.opacity = 1.0
+            if "NumIterations" in self.topLevelOperatorView.inputs and self.topLevelOperatorView.NumIterations.ready():
+                trackingLayer.numberOfChannels = self.topLevelOperatorView.NumIterations.value
             layers.append(trackingLayer)
+            
         elif self.topLevelOperatorView.zeroProvider.Output.ready(): 
             # provide zeros while waiting for the tracking result
             self.trackingsrc = LazyflowSource( self.topLevelOperatorView.zeroProvider.Output )
@@ -131,6 +136,8 @@ class TrackingBaseGui( LayerViewerGui ):
             trackingLayer.name = "Tracking"
             trackingLayer.visible = True
             trackingLayer.opacity = 1.0
+            if "NumIterations" in self.topLevelOperatorView.inputs and self.topLevelOperatorView.NumIterations.ready():
+                trackingLayer.numberOfChannels = self.topLevelOperatorView.NumIterations.value
             layers.append(trackingLayer)
         
         if self.topLevelOperatorView.LabelImage.ready():

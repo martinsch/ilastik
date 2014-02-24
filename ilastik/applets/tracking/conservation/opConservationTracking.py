@@ -1,6 +1,7 @@
 from lazyflow.graph import InputSlot, OutputSlot
-from lazyflow.rtype import List
+from lazyflow.rtype import List, SubRegion
 from lazyflow.stype import Opaque
+from lazyflow.roi import sliceToRoi, roiToSlice
 import pgmlink
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
@@ -10,27 +11,38 @@ from ilastik.applets.tracking.base.trackingUtilities import get_events
 class OpConservationTracking(OpTrackingBase):
     DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)    
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
-    NumLabels = InputSlot()
+    NumLabels = InputSlot()   
+    NumIterations = InputSlot(value=10)
     
     MergerOutput = OutputSlot()    
     
     def setupOutputs(self):
         super(OpConservationTracking, self).setupOutputs()        
-        self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
+        self.MergerOutput.meta.assignFrom(self.Output.meta)        
     
     def execute(self, slot, subindex, roi, result):
         result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
         
         if slot is self.MergerOutput:
-            result = self.LabelImage.get(roi).wait()
+            croi_start = roi.start[:]
+            croi_stop = roi.stop[:]                        
+            
+            #assumes t,x,y,c,z
+            croi_start[-1] = 0
+            croi_stop[-1] = 1
+            croi = SubRegion(self.LabelImage, start=croi_start, stop=croi_stop)
+            
+            result = self.LabelImage.get(croi).wait()            
             parameters = self.Parameters.value
             
             trange = range(roi.start[0], roi.stop[0])
-            for t in trange:
-                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and len(self.mergers) > t and len(self.mergers[t])):            
-                    result[t-roi.start[0],...,0] = relabelMergers(result[t-roi.start[0],...,0], self.mergers[t])
-                else:
-                    result[t-roi.start[0],...][:] = 0
+            for ch in range(roi.start[-1], roi.stop[-1]):
+                for t in trange:
+                    if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and ch in self.mergers and \
+                            len(self.mergers[ch]) > t and len(self.mergers[ch][t])):            
+                        result[t-roi.start[0],...,ch] = relabelMergers(result[t-roi.start[0],...,0], self.mergers[t])
+                    else:
+                        result[t-roi.start[0],...][:] = 0
             
         return result     
 
@@ -100,7 +112,7 @@ class OpConservationTracking(OpTrackingBase):
         median_obj_size = [0]
 
         coordinate_map = pgmlink.TimestepIdCoordinateMap()
-        if withArmaCoordinates:
+        if withArmaCoordinates and False:
             coordinate_map.initialize()
         ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
@@ -170,15 +182,21 @@ class OpConservationTracking(OpTrackingBase):
                                          )
 
         
+        if not self.NumIterations.ready():
+            raise Exception, "Number of iterations is not set."
+                
+        iterations = self.NumIterations.value
         try:
-            eventsVector = tracker(ts, coordinate_map.get())
+            eventsVector = tracker(ts, coordinate_map.get(), iterations)
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
         if len(eventsVector) == 0:
             raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
         
-        events = get_events(eventsVector)
+        events = {}
+        for i in range(iterations):            
+            events[i] = get_events(eventsVector[i])
+            
         self.Parameters.setValue(parameters, check_changed=False)
         self.EventsVector.setValue(events, check_changed=False)
-        
