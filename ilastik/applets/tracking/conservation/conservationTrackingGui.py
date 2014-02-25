@@ -56,6 +56,12 @@ class ConservationTrackingGui( TrackingBaseGui ):
             self._drawer.mergerResolutionBox.setChecked(parameters['withMergerResolution'])
         if 'borderAwareWidth' in parameters.keys():
             self._drawer.bordWidthBox.setValue(parameters['borderAwareWidth'])
+        if 'sigma' in parameters.keys():
+            self._drawer.sigmaBox.setValue(parameters['sigma'])
+        if 'distributionId' in parameters.keys():
+            self._drawer.distributionIdBox.setValue(parameters['distributionId'])
+        if 'numIterations' in parameters.keys():
+            self._drawer.numIterationsBox.setValue(parameters['numIterations'])
 #        if 'cplex_timeout' in parameters.keys():
 #            self._drawer.timeoutBox.setText(parameters['cplex_timeout']          
         
@@ -96,7 +102,8 @@ class ConservationTrackingGui( TrackingBaseGui ):
             self._labelSetStyleSheet(self.mergerLabels[i], self.mergerColors[i+1])
         
         self._onMaxObjectsBoxChanged()
-        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)                
+        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
+        self._drawer.numIterationsBox.valueChanged.connect(self._onNumIterationsBoxChanged)                
 
     def _setRanges(self, *args):
         super(ConservationTrackingGui, self)._setRanges()        
@@ -112,6 +119,9 @@ class ConservationTrackingGui( TrackingBaseGui ):
         
     def _onMaxObjectsBoxChanged(self):
         self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
+    
+    def _onNumIterationsBoxChanged(self):
+        self.mainOperator.NumIterations.setValue(int(self._drawer.numIterationsBox.value()))
         
     def _onTrackButtonPressed( self ):    
         if not self.mainOperator.ObjectFeatures.ready():
@@ -148,7 +158,9 @@ class ConservationTrackingGui( TrackingBaseGui ):
             withDivisions = self._drawer.divisionsBox.isChecked()        
             withOpticalCorrection = self._drawer.opticalBox.isChecked()
             withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
-            borderAwareWidth = self._drawer.bordWidthBox.value()
+            borderAwareWidth = self._drawer.bordWidthBox.value()            
+            distributionId = int(self._drawer.distributionIdBox.value())
+            sigma = float(self._drawer.distributionIdBox.value())
             withArmaCoordinates = True
     
             ndim=3
@@ -179,7 +191,9 @@ class ConservationTrackingGui( TrackingBaseGui ):
                     ndim=ndim,
                     withMergerResolution=withMergerResolution,
                     borderAwareWidth = borderAwareWidth,
-                    withArmaCoordinates = withArmaCoordinates
+                    withArmaCoordinates = withArmaCoordinates,
+                    distributionId = distributionId,
+                    sigma = sigma
                     )
             except Exception:           
                 ex_type, ex, tb = sys.exc_info()

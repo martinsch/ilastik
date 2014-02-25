@@ -192,7 +192,7 @@ class OpTrackingBase(Operator):
         filtered_labels = self.FilteredLabels.value
         
         if "NumIterations" in self.inputs and self.NumIterations.ready():
-            iterations = self.NumIterations.ready()
+            iterations = self.NumIterations.value
         else:
             iterations = 1
             

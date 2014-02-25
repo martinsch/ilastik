@@ -70,7 +70,9 @@ class OpConservationTracking(OpTrackingBase):
             cplex_timeout=None,
             withMergerResolution=True,
             borderAwareWidth = 0.0,
-            withArmaCoordinates = True
+            withArmaCoordinates = True,
+            distributionId = 0,
+            sigma = 1
             ):
         
         if not self.Parameters.ready():
@@ -91,6 +93,8 @@ class OpConservationTracking(OpTrackingBase):
         parameters['withMergerResolution'] = withMergerResolution
         parameters['borderAwareWidth'] = borderAwareWidth
         parameters['withArmaCoordinates'] = withArmaCoordinates
+        parameters['sigma'] = sigma
+        parameters['distributionId'] = distributionId
                 
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
@@ -187,7 +191,7 @@ class OpConservationTracking(OpTrackingBase):
                 
         iterations = self.NumIterations.value
         try:
-            eventsVector = tracker(ts, coordinate_map.get(), int(iterations), 0, 1)
+            eventsVector = tracker(ts, coordinate_map.get(), int(iterations), distributionId, sigma)
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
@@ -197,6 +201,6 @@ class OpConservationTracking(OpTrackingBase):
         events = {}
         for i in range(iterations):            
             events[i] = get_events(eventsVector[i])
-            
+        
         self.Parameters.setValue(parameters, check_changed=False)
         self.EventsVector.setValue(events, check_changed=False)
