@@ -160,7 +160,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
             withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
             borderAwareWidth = self._drawer.bordWidthBox.value()            
             distributionId = int(self._drawer.distributionIdBox.value())
-            sigma = float(self._drawer.distributionIdBox.value())
+            sigma = float(self._drawer.sigmaBox.value())
             withArmaCoordinates = True
     
             ndim=3
