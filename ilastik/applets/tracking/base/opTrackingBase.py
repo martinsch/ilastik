@@ -288,7 +288,22 @@ class OpTrackingBase(Operator):
         if 'MergerOutput' in self.outputs:
             self.MergerOutput._value = None
             self.MergerOutput.setDirty(slice(None))            
-            
+    
+    def _addFeatures(self, traxel, features='all'):
+        t = int(traxel.Timestep)        
+        feats = self.ObjectFeatures([t]).wait()
+
+        if features == 'all':
+            features = feats.values()[0][default_features_key].keys()
+        for name in features:
+            f = feats[t][default_features_key][name][traxel.Id]
+            f = f.tolist()
+            if not isinstance(f, list):
+                f = [f]
+
+            traxel.add_feature_array(str(name), int(len(f)))
+            for i, v in enumerate(f):
+                traxel.set_feature_value(str(name), i, float(v))
 
     def _generate_traxelstore(self,
                                time_range,
@@ -440,7 +455,9 @@ class OpTrackingBase(Operator):
                 if median_object_size is not None:
                     obj_sizes.append(float(size))
 
-                    
+                
+                #self._addFeatures(tr, features='all')
+
                 ts.add(tr)
 
                 # add coordinate lists
