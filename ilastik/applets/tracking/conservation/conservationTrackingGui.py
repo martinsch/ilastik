@@ -59,7 +59,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
         if 'sigma' in parameters.keys():
             self._drawer.sigmaBox.setValue(parameters['sigma'])
         if 'distributionId' in parameters.keys():
-            self._drawer.distributionIdBox.setValue(parameters['distributionId'])
+            self._drawer.distributionIdBox.setCurrentIndex(parameters['distributionId'])
         if 'numIterations' in parameters.keys():
             self._drawer.numIterationsBox.setValue(parameters['numIterations'])
 #        if 'cplex_timeout' in parameters.keys():
@@ -159,8 +159,9 @@ class ConservationTrackingGui( TrackingBaseGui ):
             withOpticalCorrection = self._drawer.opticalBox.isChecked()
             withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
             borderAwareWidth = self._drawer.bordWidthBox.value()            
-            distributionId = int(self._drawer.distributionIdBox.value())
+            distributionId = int(self._drawer.distributionIdBox.currentIndex())
             sigma = float(self._drawer.sigmaBox.value())
+
             withArmaCoordinates = True
     
             ndim=3

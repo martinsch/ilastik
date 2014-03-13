@@ -163,6 +163,17 @@ class OpConservationTracking(OpTrackingBase):
         if ndim == 2:
             assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
 
+        if not self.NumIterations.ready():
+            raise Exception, "Number of iterations is not set."
+                
+        iterations = int(self.NumIterations.value)
+
+        if distributionId == 3: # CPLEX M-best
+            m_best_cplex = iterations
+            iterations = 1
+        else:
+            m_best_cplex = 1
+        
         tracker = pgmlink.ConsTracking(maxObj,
                                          float(maxDist),
                                          float(divThreshold),
@@ -182,16 +193,17 @@ class OpConservationTracking(OpTrackingBase):
                                          transition_parameter,
                                          borderAwareWidth,
                                          fov,
-                                         True #with_constraints
+                                         True, #with_constraints
+                                         int(distributionId),
+                                         float(sigma),
+                                         float(sigma), # diverse lambda
+                                         int(m_best_cplex),
+                                         "none" # serialization filename
                                          )
 
         
-        if not self.NumIterations.ready():
-            raise Exception, "Number of iterations is not set."
-                
-        iterations = self.NumIterations.value
         try:
-            eventsVector = tracker(ts, coordinate_map.get(), int(iterations), distributionId, sigma)
+            eventsVector = tracker(ts, coordinate_map.get(), int(iterations)) #, distributionId, sigma)
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         

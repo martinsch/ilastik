@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1096</height>
+    <height>1127</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -334,6 +334,19 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
+       <item row="10" column="1">
+        <widget class="QDoubleSpinBox" name="sigmaBox">
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="minimum">
+          <double>0.001000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+       </item>
        <item row="2" column="1">
         <widget class="QDoubleSpinBox" name="divThreshBox">
          <property name="maximum">
@@ -462,7 +475,7 @@
        <item row="9" column="0">
         <widget class="QLabel" name="label_22">
          <property name="text">
-          <string>Distribution ID</string>
+          <string>M-best Method</string>
          </property>
         </widget>
        </item>
@@ -470,19 +483,6 @@
         <widget class="QLabel" name="label_23">
          <property name="text">
           <string>Sigma</string>
-         </property>
-        </widget>
-       </item>
-       <item row="10" column="1">
-        <widget class="QDoubleSpinBox" name="sigmaBox">
-         <property name="decimals">
-          <number>3</number>
-         </property>
-         <property name="minimum">
-          <double>0.001000000000000</double>
-         </property>
-         <property name="value">
-          <double>0.100000000000000</double>
          </property>
         </widget>
        </item>
@@ -497,7 +497,28 @@
         </widget>
        </item>
        <item row="9" column="1">
-        <widget class="QSpinBox" name="distributionIdBox"/>
+        <widget class="QComboBox" name="distributionIdBox">
+         <item>
+          <property name="text">
+           <string>Gaussian perturbation</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Perturb-and-MAP</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Diverse M-best</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>M-best CPLEX</string>
+          </property>
+         </item>
+        </widget>
        </item>
       </layout>
      </item>
