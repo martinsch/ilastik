@@ -85,7 +85,8 @@ class OpTrackingBase(Operator):
         #cache our own output, don't propagate from internal operator
         chunks = list(self.Output.meta.shape)
         # FIXME: assumes t,x,y,z,c
-        chunks[0] = 1  # 't'        
+        chunks[0] = 1  # 't'
+        chunks[-1] = 1 # 'c'       
         self._blockshape = tuple(chunks)
         self._opCache.BlockShape.setValue( self._blockshape )
         

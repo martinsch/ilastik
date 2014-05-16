@@ -167,12 +167,20 @@ class OpConservationTracking(OpTrackingBase):
             raise Exception, "Number of iterations is not set."
                 
         iterations = int(self.NumIterations.value)
-
-        if distributionId == 3: # CPLEX M-best
-            m_best_cplex = iterations
-            iterations = 1
-        else:
-            m_best_cplex = 1
+        
+        vd = pgmlink.VectorOfDouble()
+        
+        if type(sigma)!=list:
+            sigma = [sigma]*(max(3,maxObj+1))
+        for si in sigma:
+            vd.append(si)
+        distr = [pgmlink.DistrId.GaussianPertubation,pgmlink.DistrId.PerturbAndMAP,pgmlink.DistrId.DiverseMbest,pgmlink.DistrId.MbestCPLEX][distributionId]
+        up = pgmlink.UncertaintyParameter(iterations,distr,vd)
+        
+        """int(distributionId),
+                                         float(sigma),
+                                         float(sigma), # diverse lambda
+                                         int(m_best_cplex),"""
         
         tracker = pgmlink.ConsTracking(maxObj,
                                          float(maxDist),
@@ -194,16 +202,13 @@ class OpConservationTracking(OpTrackingBase):
                                          borderAwareWidth,
                                          fov,
                                          True, #with_constraints
-                                         int(distributionId),
-                                         float(sigma),
-                                         float(sigma), # diverse lambda
-                                         int(m_best_cplex),
+                                         up,
                                          "none" # serialization filename
                                          )
 
         
         try:
-            eventsVector = tracker(ts, coordinate_map.get(), int(iterations)) #, distributionId, sigma)
+            eventsVector = tracker(ts, coordinate_map.get()) #, distributionId, sigma)
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
