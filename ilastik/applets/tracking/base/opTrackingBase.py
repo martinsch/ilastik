@@ -130,6 +130,7 @@ class OpTrackingBase(Operator):
             #assumes t,x,y,c,z
             croi_start[-1] = 0
             croi_stop[-1] = 1
+            
             croi = SubRegion(self.LabelImage, start=croi_start, stop=croi_stop)   
             
             result = np.zeros(roi.stop-roi.start)
@@ -140,12 +141,19 @@ class OpTrackingBase(Operator):
             
             t_start = roi.start[0]
             t_end = roi.stop[0]
-            for ch in range(roi.start[-1], roi.stop[-1]):
+            
+            rstart = roi.start[-1]
+            for ch in range(rstart, roi.stop[-1]):
                 for t in range(t_start, t_end):
-                    if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]) and ch in self.label2color.keys() and len(self.label2color[ch]) > t:                
-                        result[t-t_start, ..., ch] = relabel(li[t-t_start, ..., 0], self.label2color[ch][t])
+                    if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]) and ch in self.label2color.keys() and len(self.label2color[ch]) > t:
+                        print li.shape
+                        print t-t_start
+                        print li[t-t_start, ..., 0]
+                        print                 self.label2color[ch][t]
+                        print '1'
+                        result[t-t_start, ..., ch-rstart] = relabel(li[t-t_start, ..., 0], self.label2color[ch][t])
                     else:
-                        result[t-t_start,...,ch:(ch+1)] = 0
+                        result[t-t_start,...,ch-rstart:(ch+1)-rstart] = 0
             return result         
         elif slot == self.AllBlocks:            
             # if nothing was computed, return empty list
