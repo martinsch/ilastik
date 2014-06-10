@@ -29,6 +29,12 @@ class ConservationTrackingGui( TrackingBaseGui ):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         
+        self.sigmaBoxes=[self._drawer.sigmaBoxApp,
+                     self._drawer.sigmaBoxDis,
+                     self._drawer.sigmaBoxDet,
+                     self._drawer.sigmaBoxTrans,
+                     self._drawer.sigmaBoxDiv]
+    
         parameters = self.topLevelOperatorView.Parameters.value        
         if 'maxDist' in parameters.keys():
             self._drawer.maxDistBox.setValue(parameters['maxDist'])
@@ -57,7 +63,11 @@ class ConservationTrackingGui( TrackingBaseGui ):
         if 'borderAwareWidth' in parameters.keys():
             self._drawer.bordWidthBox.setValue(parameters['borderAwareWidth'])
         if 'sigma' in parameters.keys():
-            self._drawer.sigmaBox.setValue(parameters['sigma'])
+            #backwards-compatibility
+            if type(parameters['sigma'])!=list:
+                parameters['sigma']=[parameters['sigma']]*5
+            for sigmab,sigma in zip(self.sigmaBoxes,parameters['sigma']):
+                sigmab.setValue(sigma)
         if 'distributionId' in parameters.keys():
             self._drawer.distributionIdBox.setCurrentIndex(parameters['distributionId'])
         if 'numIterations' in parameters.keys():
@@ -160,7 +170,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
             withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
             borderAwareWidth = self._drawer.bordWidthBox.value()            
             distributionId = int(self._drawer.distributionIdBox.currentIndex())
-            sigma = float(self._drawer.sigmaBox.value())
+            sigma = [float(sigma.value()) for sigma in self.sigmaBoxes]
 
             withArmaCoordinates = True
     

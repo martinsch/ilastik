@@ -334,16 +334,81 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="10" column="1">
-        <widget class="QDoubleSpinBox" name="sigmaBox">
+       <item row="11" column="1">
+        <widget class="QDoubleSpinBox" name="sigmaBoxApp">
          <property name="decimals">
           <number>3</number>
          </property>
          <property name="minimum">
-          <double>0.001000000000000</double>
+          <double>0.000000000000000</double>
          </property>
          <property name="value">
           <double>0.100000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QDoubleSpinBox" name="divWeightBox">
+         <property name="maximum">
+          <double>300.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>10.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Division Threshold</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QDoubleSpinBox" name="transWeightBox">
+         <property name="maximum">
+          <double>300.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>10.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>Transition Weight</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_20">
+         <property name="text">
+          <string>Border Width (abs.)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QSpinBox" name="bordWidthBox"/>
+       </item>
+       <item row="8" column="0">
+        <widget class="QLabel" name="label_21">
+         <property name="text">
+          <string>Num. Iterations</string>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="0">
+        <widget class="QLabel" name="label_22">
+         <property name="text">
+          <string>M-best Method</string>
+         </property>
+        </widget>
+       </item>
+       <item row="11" column="0">
+        <widget class="QLabel" name="label_23">
+         <property name="text">
+          <string>Appearance</string>
          </property>
         </widget>
        </item>
@@ -367,45 +432,38 @@
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
-        <widget class="QDoubleSpinBox" name="divWeightBox">
-         <property name="maximum">
-          <double>300.000000000000000</double>
+       <item row="8" column="1">
+        <widget class="QSpinBox" name="numIterationsBox">
+         <property name="minimum">
+          <number>1</number>
          </property>
          <property name="value">
-          <double>10.000000000000000</double>
+          <number>10</number>
          </property>
         </widget>
        </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Division Threshold</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="0">
-        <widget class="QLabel" name="label_6">
-         <property name="text">
-          <string>Division Weight</string>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QDoubleSpinBox" name="transWeightBox">
-         <property name="maximum">
-          <double>300.000000000000000</double>
-         </property>
-         <property name="value">
-          <double>10.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="0">
-        <widget class="QLabel" name="label_7">
-         <property name="text">
-          <string>Transition Weight</string>
-         </property>
+       <item row="9" column="1">
+        <widget class="QComboBox" name="distributionIdBox">
+         <item>
+          <property name="text">
+           <string>Gaussian perturbation</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Perturb-and-MAP</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Diverse M-best</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>M-best CPLEX</string>
+          </property>
+         </item>
         </widget>
        </item>
        <item row="3" column="1">
@@ -455,69 +513,80 @@
          </property>
         </widget>
        </item>
-       <item row="7" column="0">
-        <widget class="QLabel" name="label_20">
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_6">
          <property name="text">
-          <string>Border Width (abs.)</string>
+          <string>Division Weight</string>
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
-        <widget class="QSpinBox" name="bordWidthBox"/>
-       </item>
-       <item row="8" column="0">
-        <widget class="QLabel" name="label_21">
+       <item row="12" column="0">
+        <widget class="QLabel" name="label_26">
          <property name="text">
-          <string>Num. Iterations</string>
+          <string>Disappearance</string>
          </property>
         </widget>
        </item>
-       <item row="9" column="0">
-        <widget class="QLabel" name="label_22">
+       <item row="15" column="0">
+        <widget class="QLabel" name="label_27">
          <property name="text">
-          <string>M-best Method</string>
+          <string>Division</string>
          </property>
         </widget>
        </item>
-       <item row="10" column="0">
-        <widget class="QLabel" name="label_23">
+       <item row="10" column="0" colspan="2">
+        <widget class="QLabel" name="label_24">
+         <property name="mouseTracking">
+          <bool>true</bool>
+         </property>
          <property name="text">
-          <string>Sigma</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Distribution parameters&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
         </widget>
        </item>
-       <item row="8" column="1">
-        <widget class="QSpinBox" name="numIterationsBox">
-         <property name="minimum">
-          <number>1</number>
+       <item row="13" column="0">
+        <widget class="QLabel" name="label_28">
+         <property name="text">
+          <string>Detection</string>
+         </property>
+        </widget>
+       </item>
+       <item row="14" column="0">
+        <widget class="QLabel" name="label_29">
+         <property name="text">
+          <string>Transition</string>
+         </property>
+        </widget>
+       </item>
+       <item row="12" column="1">
+        <widget class="QDoubleSpinBox" name="sigmaBoxDis">
+         <property name="decimals">
+          <number>3</number>
          </property>
          <property name="value">
-          <number>10</number>
+          <double>0.100000000000000</double>
          </property>
         </widget>
        </item>
-       <item row="9" column="1">
-        <widget class="QComboBox" name="distributionIdBox">
-         <item>
-          <property name="text">
-           <string>Gaussian perturbation</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Perturb-and-MAP</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Diverse M-best</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>M-best CPLEX</string>
-          </property>
-         </item>
+       <item row="13" column="1">
+        <widget class="QDoubleSpinBox" name="sigmaBoxDet">
+         <property name="decimals">
+          <number>3</number>
+         </property>
+        </widget>
+       </item>
+       <item row="14" column="1">
+        <widget class="QDoubleSpinBox" name="sigmaBoxTrans">
+         <property name="decimals">
+          <number>3</number>
+         </property>
+        </widget>
+       </item>
+       <item row="15" column="1">
+        <widget class="QDoubleSpinBox" name="sigmaBoxDiv">
+         <property name="decimals">
+          <number>3</number>
+         </property>
         </widget>
        </item>
       </layout>

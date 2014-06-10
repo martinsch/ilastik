@@ -146,11 +146,6 @@ class OpTrackingBase(Operator):
             for ch in range(rstart, roi.stop[-1]):
                 for t in range(t_start, t_end):
                     if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]) and ch in self.label2color.keys() and len(self.label2color[ch]) > t:
-                        print li.shape
-                        print t-t_start
-                        print li[t-t_start, ..., 0]
-                        print                 self.label2color[ch][t]
-                        print '1'
                         result[t-t_start, ..., ch-rstart] = relabel(li[t-t_start, ..., 0], self.label2color[ch][t])
                     else:
                         result[t-t_start,...,ch-rstart:(ch+1)-rstart] = 0

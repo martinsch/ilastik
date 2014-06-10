@@ -72,7 +72,7 @@ class OpConservationTracking(OpTrackingBase):
             borderAwareWidth = 0.0,
             withArmaCoordinates = True,
             distributionId = 0,
-            sigma = 1
+            sigma = [0.1,0.1,0,0,0]
             ):
         
         if not self.Parameters.ready():
@@ -170,17 +170,10 @@ class OpConservationTracking(OpTrackingBase):
         
         vd = pgmlink.VectorOfDouble()
         
-        if type(sigma)!=list:
-            sigma = [sigma]*(max(3,maxObj+1))
         for si in sigma:
             vd.append(si)
         distr = [pgmlink.DistrId.GaussianPertubation,pgmlink.DistrId.PerturbAndMAP,pgmlink.DistrId.DiverseMbest,pgmlink.DistrId.MbestCPLEX][distributionId]
         up = pgmlink.UncertaintyParameter(iterations,distr,vd)
-        
-        """int(distributionId),
-                                         float(sigma),
-                                         float(sigma), # diverse lambda
-                                         int(m_best_cplex),"""
         
         tracker = pgmlink.ConsTracking(maxObj,
                                          float(maxDist),
