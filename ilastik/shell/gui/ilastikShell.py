@@ -31,12 +31,11 @@ import numpy
 
 # PyQt
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList, QTimer
+from PyQt4.QtCore import pyqtSignal, QObject, Qt, QUrl
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-                        QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, \
-                        QInputDialog, QIcon, QFont, QToolButton, QLabel, QTreeWidget, \
-                        QVBoxLayout, QHBoxLayout, QShortcut, QSizePolicy
+                        QProgressBar, QInputDialog, QIcon, QFont, QToolButton, \
+                        QHBoxLayout, QSizePolicy, QDesktopServices, QLabel
 
 # lazyflow
 from lazyflow.roi import TinyVector
@@ -235,7 +234,7 @@ class IlastikShell( QMainWindow ):
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
 
-    def __init__( self, parent = None, new_workflow_cmdline_args=None, flags = Qt.WindowFlags(0) ):
+    def __init__( self, parent = None, workflow_cmdline_args=None, flags = Qt.WindowFlags(0) ):
         QMainWindow.__init__(self, parent = parent, flags = flags)
         #self.setFixedSize(1680,1050) #ilastik manuscript resolution
         # Register for thunk events (easy UI calls from non-GUI threads)
@@ -244,7 +243,7 @@ class IlastikShell( QMainWindow ):
         self.openFileButtons = []
         self.cleanupFunctions = []
 
-        self._new_workflow_cmdline_args = new_workflow_cmdline_args
+        self._workflow_cmdline_args = workflow_cmdline_args
 
         self.projectManager = None
         self.projectDisplayManager = None
@@ -416,7 +415,7 @@ class IlastikShell( QMainWindow ):
         shellActions.saveProjectAsAction.triggered.connect(self.onSaveProjectAsActionTriggered)
 
         # Menu item: Save Project Snapshot
-        shellActions.saveProjectSnapshotAction = menu.addAction("&Save Copy as...")
+        shellActions.saveProjectSnapshotAction = menu.addAction("Save Copy as...")
         shellActions.saveProjectSnapshotAction.setIcon( QIcon(ilastikIcons.SaveAs) )
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
 
@@ -579,6 +578,8 @@ class IlastikShell( QMainWindow ):
                     ps.sort_stats(sortby)
                     ps.print_stats()
                 logger.info("Printed stats to file: {}".format(stats_path))
+                # As a convenience, go ahead and open it.
+                QDesktopServices.openUrl( QUrl.fromLocalFile(stats_path) )
 
         def _exportSortedThreadStats(sortby):
             assert not yappi.is_running()
@@ -605,6 +606,8 @@ class IlastikShell( QMainWindow ):
                 with open(stats_path, 'w') as f:
                     stats.print_all(f)
                 logger.info("Printed thread stats to file: {}".format(stats_path))
+                # As a convenience, go ahead and open it.
+                QDesktopServices.openUrl( QUrl.fromLocalFile(stats_path) )
 
         profilingSubmenu = QMenu("Profiling")
         if not has_yappi:
@@ -645,10 +648,7 @@ class IlastikShell( QMainWindow ):
             self._memDlg.raise_()
 
     def _createSettingsMenu(self):
-        if not ilastik.config.cfg.getboolean("ilastik", "debug"):
-            return None
-
-        menu = QMenu("&Settings", self)
+        menu = QMenu("Settings", self)
         menu.setObjectName("settings_menu")
         # Menu item: Keyboard Shortcuts
 
@@ -1009,7 +1009,7 @@ class IlastikShell( QMainWindow ):
         :param h5_file_kwargs: Passed directly to h5py.File.__init__() of the project file; all standard params except 'mode' are allowed.
         '''
 
-        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, workflow_class, self._new_workflow_cmdline_args, h5_file_kwargs)
+        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, workflow_class, self._workflow_cmdline_args, h5_file_kwargs)
         self._loadProject(newProjectFile, newProjectFilePath, workflow_class, readOnly=False)
 
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
@@ -1148,20 +1148,20 @@ class IlastikShell( QMainWindow ):
         if workflow_class is None:
             return
 
-        workflow_cmdline_args = None
+        # If there are any "creation-time" command-line args saved to the project file,
+        #  load them so that the workflow can be instantiated with the same settings 
+        #  that were used when the project was first created. 
+        project_creation_args = []
         if "workflow_cmdline_args" in hdf5File.keys():
-            # Use workflow_cmdline_args IF PRESENT
-            # To ensure that the workflow is loaded in the same state it was created,
-            #  we do not attempt to provide any extra kwargs from the current session.
-            workflow_cmdline_args = []
             if len(hdf5File["workflow_cmdline_args"]) > 0:
-                workflow_cmdline_args = map(str, hdf5File["workflow_cmdline_args"][...])
+                project_creation_args = map(str, hdf5File["workflow_cmdline_args"][...])
 
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
             self.projectManager = ProjectManager( self,
                                                   workflow_class,
-                                                  workflow_cmdline_args=workflow_cmdline_args)
+                                                  workflow_cmdline_args=self._workflow_cmdline_args,
+                                                  project_creation_args=project_creation_args)
 
         except Exception, e:
             traceback.print_exc()
