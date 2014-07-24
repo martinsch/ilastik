@@ -2,6 +2,7 @@ from PyQt4 import uic, QtGui
 import os
 import logging
 import sys
+import re
 import traceback
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility.gui.threadRouter import threadRouted
@@ -68,34 +69,37 @@ class ConservationTrackingGui( TrackingBaseGui ):
                 parameters['sigma']=[parameters['sigma']]*5
             for sigmab,sigma in zip(self.sigmaBoxes,parameters['sigma']):
                 sigmab.setValue(sigma)
+        if 'cplex_timeout' in parameters.keys():
+            self._drawer.timeoutBox.setText(str(parameters['cplex_timeout']))
+        if 'appearanceCost' in parameters.keys():
+            self._drawer.appearanceBox.setValue(parameters['appearanceCost'])
+        if 'disappearanceCost' in parameters.keys():
+            self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
         if 'distributionId' in parameters.keys():
             self._drawer.distributionIdBox.setCurrentIndex(parameters['distributionId'])
         if 'numIterations' in parameters.keys():
             self._drawer.numIterationsBox.setValue(parameters['numIterations'])
-#        if 'cplex_timeout' in parameters.keys():
-#            self._drawer.timeoutBox.setText(parameters['cplex_timeout']          
         
         return self._drawer
 
     def initAppletDrawerUi(self):
         super(ConservationTrackingGui, self).initAppletDrawerUi()        
 
+        self._allowedTimeoutInputRegEx = re.compile('^[0-9]*$')
+        self._drawer.timeoutBox.textChanged.connect(self._onTimeoutBoxChanged)
+
         if not ilastik_config.getboolean("ilastik", "debug"):
             assert self._drawer.trackletsBox.isChecked()
             self._drawer.trackletsBox.hide()
-
-            assert not self._drawer.sizeDepBox.isChecked()
-            self._drawer.sizeDepBox.hide()
             
             assert not self._drawer.hardPriorBox.isChecked()
             self._drawer.hardPriorBox.hide()
 
-            assert self._drawer.classifierPriorBox.isChecked()
-            self._drawer.classifierPriorBox.hide()
-
             assert not self._drawer.opticalBox.isChecked()
             self._drawer.opticalBox.hide()
 
+            self._drawer.maxDistBox.hide() # hide the maximal distance box
+            self._drawer.label_2.hide() # hie the maximal distance label
             self._drawer.label_5.hide() # hide division threshold label
             self._drawer.divThreshBox.hide()
             self._drawer.label_25.hide() # hide avg. obj size label
@@ -114,6 +118,12 @@ class ConservationTrackingGui( TrackingBaseGui ):
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
         self._drawer.numIterationsBox.valueChanged.connect(self._onNumIterationsBoxChanged)                
+
+    @threadRouted
+    def _onTimeoutBoxChanged(self, *args):
+        inString = str(self._drawer.timeoutBox.text())
+        if self._allowedTimeoutInputRegEx.match(inString) is None:
+            self._drawer.timeoutBox.setText(inString.decode("utf8").encode("ascii", "replace")[:-1])
 
     def _setRanges(self, *args):
         super(ConservationTrackingGui, self)._setRanges()        
@@ -158,7 +168,11 @@ class ConservationTrackingGui( TrackingBaseGui ):
             
             self.time_range =  range(from_t, to_t + 1)
             avgSize = [self._drawer.avgSizeBox.value()]
-                    
+
+            cplex_timeout = None
+            if len(str(self._drawer.timeoutBox.text())):
+                cplex_timeout = int(self._drawer.timeoutBox.text())
+
             withTracklets = self._drawer.trackletsBox.isChecked()
             sizeDependent = self._drawer.sizeDepBox.isChecked()
             hardPrior = self._drawer.hardPriorBox.isChecked()
@@ -173,6 +187,8 @@ class ConservationTrackingGui( TrackingBaseGui ):
             sigma = [float(sigma.value()) for sigma in self.sigmaBoxes]
 
             withArmaCoordinates = True
+            appearanceCost = self._drawer.appearanceBox.value()
+            disappearanceCost = self._drawer.disappearanceBox.value()
     
             ndim=3
             if (to_z - from_z == 0):
@@ -204,7 +220,10 @@ class ConservationTrackingGui( TrackingBaseGui ):
                     borderAwareWidth = borderAwareWidth,
                     withArmaCoordinates = withArmaCoordinates,
                     distributionId = distributionId,
-                    sigma = sigma
+                    sigma = sigma,
+                    cplex_timeout = cplex_timeout,
+                    appearance_cost = appearanceCost,
+                    disappearance_cost = disappearanceCost
                     )
             except Exception:           
                 ex_type, ex, tb = sys.exc_info()
@@ -236,4 +255,4 @@ class ConservationTrackingGui( TrackingBaseGui ):
         req.notify_finished( _handle_finished )
         req.submit()
                 
-            
+
