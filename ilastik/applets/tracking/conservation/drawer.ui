@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1131</height>
+    <height>1320</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -334,6 +334,23 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
+       <item row="13" column="0">
+        <widget class="QLabel" name="label_24">
+         <property name="text">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Uncertainty:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QDoubleSpinBox" name="transWeightBox">
+         <property name="maximum">
+          <double>300.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>10.000000000000000</double>
+         </property>
+        </widget>
+       </item>
        <item row="9" column="1">
         <widget class="QLineEdit" name="timeoutBox"/>
        </item>
@@ -367,7 +384,7 @@
          </property>
         </widget>
        </item>
-       <item row="13" column="1">
+       <item row="16" column="1">
         <widget class="QDoubleSpinBox" name="sigmaBoxApp">
          <property name="decimals">
           <number>3</number>
@@ -380,42 +397,42 @@
          </property>
         </widget>
        </item>
-       <item row="13" column="0">
+       <item row="16" column="0">
         <widget class="QLabel" name="label_29">
          <property name="text">
           <string>Appearance</string>
          </property>
         </widget>
        </item>
-       <item row="14" column="0">
+       <item row="17" column="0">
         <widget class="QLabel" name="label_29">
          <property name="text">
           <string>Disappearance</string>
          </property>
         </widget>
        </item>
-       <item row="15" column="0">
+       <item row="18" column="0">
         <widget class="QLabel" name="label_28">
          <property name="text">
           <string>Detection</string>
          </property>
         </widget>
        </item>
-       <item row="16" column="0">
+       <item row="19" column="0">
         <widget class="QLabel" name="label_29">
          <property name="text">
           <string>Transition</string>
          </property>
         </widget>
        </item>
-       <item row="17" column="0">
+       <item row="20" column="0">
         <widget class="QLabel" name="label_29">
          <property name="text">
           <string>Division</string>
          </property>
         </widget>
        </item>
-       <item row="14" column="1">
+       <item row="17" column="1">
         <widget class="QDoubleSpinBox" name="sigmaBoxDis">
          <property name="decimals">
           <number>3</number>
@@ -425,42 +442,42 @@
          </property>
         </widget>
        </item>
-       <item row="15" column="1">
+       <item row="18" column="1">
         <widget class="QDoubleSpinBox" name="sigmaBoxDet">
          <property name="decimals">
           <number>3</number>
          </property>
         </widget>
        </item>
-       <item row="16" column="1">
+       <item row="19" column="1">
         <widget class="QDoubleSpinBox" name="sigmaBoxTrans">
          <property name="decimals">
           <number>3</number>
          </property>
         </widget>
        </item>
-       <item row="17" column="1">
+       <item row="20" column="1">
         <widget class="QDoubleSpinBox" name="sigmaBoxDiv">
          <property name="decimals">
           <number>3</number>
          </property>
         </widget>
        </item>
-       <item row="11" column="0">
+       <item row="14" column="0">
         <widget class="QLabel" name="label_21">
          <property name="text">
           <string>Num. Iterations</string>
          </property>
         </widget>
        </item>
-       <item row="12" column="0">
+       <item row="15" column="0">
         <widget class="QLabel" name="label_22">
          <property name="text">
           <string>Pert. Method</string>
          </property>
         </widget>
        </item>
-       <item row="11" column="1">
+       <item row="14" column="1">
         <widget class="QSpinBox" name="numIterationsBox">
          <property name="minimum">
           <number>1</number>
@@ -470,7 +487,7 @@
          </property>
         </widget>
        </item>
-       <item row="12" column="1">
+       <item row="15" column="1">
         <widget class="QComboBox" name="distributionIdBox">
          <item>
           <property name="text">
@@ -518,16 +535,6 @@
          </property>
          <property name="text">
           <string>Division Weight</string>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QDoubleSpinBox" name="transWeightBox">
-         <property name="maximum">
-          <double>300.000000000000000</double>
-         </property>
-         <property name="value">
-          <double>10.000000000000000</double>
          </property>
         </widget>
        </item>
@@ -648,6 +655,20 @@
          </property>
          <property name="text">
           <string>Disappearance Cost</string>
+         </property>
+        </widget>
+       </item>
+       <item row="12" column="0">
+        <widget class="Line" name="line_6">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="12" column="1">
+        <widget class="Line" name="line_5">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
          </property>
         </widget>
        </item>
