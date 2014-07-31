@@ -214,6 +214,9 @@ class OpTrackingBase(Operator):
                 label2color[it].append({})
                 mergers[it].append({})
             
+            if it > len(events):
+                continue
+
             for i in time_range:
                 dis = get_dict_value(events[it][str(i-time_range[0]+1)], "dis", [])            
                 app = get_dict_value(events[it][str(i-time_range[0]+1)], "app", [])
@@ -247,7 +250,8 @@ class OpTrackingBase(Operator):
                             maxId += 1
                         else:
                             label2color[it][-2][int(e[0])] = np.random.randint(1, 255)
-                moves_at.append(int(e[0]))
+                    label2color[it][-1][int(e[1])] = label2color[it][-2][int(e[0])]
+                    moves_at.append(int(e[0]))
     
                 for e in div:
                     if not label2color[it][-2].has_key(int(e[0])):
@@ -270,13 +274,13 @@ class OpTrackingBase(Operator):
                             maxId += 1
                         else:
                             label2color[it][time_range[0] + int(e[2])][int(e[0])] = np.random.randint(1, 255)
-                label2color[it][-1][int(e[1])] = label2color[it][time_range[0] + int(e[2])][int(e[0])]
+                    label2color[it][-1][int(e[1])] = label2color[it][time_range[0] + int(e[2])][int(e[0])]
 
-        # last timestep
-        merger = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "merger", [])
-        mergers.append({})
-        for e in merger:
-            mergers[-1][int(e[0])] = int(e[1])
+            # last timestep
+            merger = get_dict_value(events[it][str(time_range[-1] - time_range[0] + 1)], "merger", [])
+            mergers[it].append({})
+            for e in merger:
+                mergers[it][-1][int(e[0])] = int(e[1])
 
 
             # mark the filtered objects
