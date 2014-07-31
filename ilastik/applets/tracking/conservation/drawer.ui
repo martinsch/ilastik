@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1127</height>
+    <height>1131</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -334,10 +334,6 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="11" column="1">
-        <widget class="QDoubleSpinBox" name="sigmaBoxApp">
-         <property name="decimals">
-          <number>3</number>
        <item row="9" column="1">
         <widget class="QLineEdit" name="timeoutBox"/>
        </item>
@@ -348,86 +344,6 @@
          </property>
          <property name="value">
           <number>500</number>
-         </property>
-        </widget>
-       </item>
-         </property>
-         <property name="minimum">
-          <double>0.000000000000000</double>
-         </property>
-         <property name="value">
-          <double>0.100000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="1">
-        <widget class="QDoubleSpinBox" name="divWeightBox">
-         <property name="maximum">
-          <double>300.000000000000000</double>
-         </property>
-         <property name="value">
-          <double>10.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Division Threshold</string>
-         </property>
-        </widget>
-       </item>
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance division probabilities&lt;/span&gt; against transitions and detections. High values (≥10) give more weight to the division classifier, low values (≤10) will weigh the transition and detection probabilities higher than the division probabilities.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-       <item row="6" column="1">
-        <widget class="QDoubleSpinBox" name="transWeightBox">
-         <property name="maximum">
-          <double>300.000000000000000</double>
-         </property>
-         <property name="value">
-          <double>10.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="0">
-        <widget class="QLabel" name="label_7">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance transition probabilities&lt;/span&gt; against divisions and detections. High values (≥10) will make transitions overrule division and detection probabilities, low values (≤10) will weigh detection and division classifier higher than transition probabilities.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Transition Weight</string>
-         </property>
-        </widget>
-       </item>
-       <item row="7" column="0">
-        <widget class="QLabel" name="label_20">
-         <property name="text">
-          <string>Border Width (abs.)</string>
-         </property>
-        </widget>
-       </item>
-       <item row="7" column="1">
-        <widget class="QSpinBox" name="bordWidthBox"/>
-       </item>
-       <item row="8" column="0">
-        <widget class="QLabel" name="label_21">
-         <property name="text">
-          <string>Num. Iterations</string>
-         </property>
-        </widget>
-       </item>
-       <item row="9" column="0">
-        <widget class="QLabel" name="label_22">
-         <property name="text">
-          <string>M-best Method</string>
-         </property>
-        </widget>
-       </item>
-       <item row="11" column="0">
-        <widget class="QLabel" name="label_23">
-         <property name="text">
-          <string>Appearance</string>
          </property>
         </widget>
        </item>
@@ -451,7 +367,100 @@
          </property>
         </widget>
        </item>
-       <item row="8" column="1">
+       <item row="13" column="1">
+        <widget class="QDoubleSpinBox" name="sigmaBoxApp">
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="minimum">
+          <double>0.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="13" column="0">
+        <widget class="QLabel" name="label_29">
+         <property name="text">
+          <string>Appearance</string>
+         </property>
+        </widget>
+       </item>
+       <item row="14" column="0">
+        <widget class="QLabel" name="label_29">
+         <property name="text">
+          <string>Disappearance</string>
+         </property>
+        </widget>
+       </item>
+       <item row="15" column="0">
+        <widget class="QLabel" name="label_28">
+         <property name="text">
+          <string>Detection</string>
+         </property>
+        </widget>
+       </item>
+       <item row="16" column="0">
+        <widget class="QLabel" name="label_29">
+         <property name="text">
+          <string>Transition</string>
+         </property>
+        </widget>
+       </item>
+       <item row="17" column="0">
+        <widget class="QLabel" name="label_29">
+         <property name="text">
+          <string>Division</string>
+         </property>
+        </widget>
+       </item>
+       <item row="14" column="1">
+        <widget class="QDoubleSpinBox" name="sigmaBoxDis">
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="value">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="15" column="1">
+        <widget class="QDoubleSpinBox" name="sigmaBoxDet">
+         <property name="decimals">
+          <number>3</number>
+         </property>
+        </widget>
+       </item>
+       <item row="16" column="1">
+        <widget class="QDoubleSpinBox" name="sigmaBoxTrans">
+         <property name="decimals">
+          <number>3</number>
+         </property>
+        </widget>
+       </item>
+       <item row="17" column="1">
+        <widget class="QDoubleSpinBox" name="sigmaBoxDiv">
+         <property name="decimals">
+          <number>3</number>
+         </property>
+        </widget>
+       </item>
+       <item row="11" column="0">
+        <widget class="QLabel" name="label_21">
+         <property name="text">
+          <string>Num. Iterations</string>
+         </property>
+        </widget>
+       </item>
+       <item row="12" column="0">
+        <widget class="QLabel" name="label_22">
+         <property name="text">
+          <string>Pert. Method</string>
+         </property>
+        </widget>
+       </item>
+       <item row="11" column="1">
         <widget class="QSpinBox" name="numIterationsBox">
          <property name="minimum">
           <number>1</number>
@@ -461,7 +470,7 @@
          </property>
         </widget>
        </item>
-       <item row="9" column="1">
+       <item row="12" column="1">
         <widget class="QComboBox" name="distributionIdBox">
          <item>
           <property name="text">
@@ -483,6 +492,53 @@
            <string>M-best CPLEX</string>
           </property>
          </item>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QDoubleSpinBox" name="divWeightBox">
+         <property name="maximum">
+          <double>300.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>10.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Division Threshold</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_6">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance division probabilities&lt;/span&gt; against transitions and detections. High values (≥10) give more weight to the division classifier, low values (≤10) will weigh the transition and detection probabilities higher than the division probabilities.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Division Weight</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QDoubleSpinBox" name="transWeightBox">
+         <property name="maximum">
+          <double>300.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>10.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance transition probabilities&lt;/span&gt; against divisions and detections. High values (≥10) will make transitions overrule division and detection probabilities, low values (≤10) will weigh detection and division classifier higher than transition probabilities.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Transition Weight</string>
+         </property>
         </widget>
        </item>
        <item row="3" column="1">
@@ -536,12 +592,12 @@
         </widget>
        </item>
        <item row="10" column="0">
-        <widget class="QLabel" name="label_6">
+        <widget class="QLabel" name="label_20">
          <property name="toolTip">
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Absolute number of pixels at the border of the field of view where appearance and disappearance cost less (linearly).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="text">
-          <string>Division Weight</string>
+          <string>Border Width (abs.)</string>
          </property>
         </widget>
        </item>
@@ -592,25 +648,6 @@
          </property>
          <property name="text">
           <string>Disappearance Cost</string>
-         </property>
-        </widget>
-        <widget class="QDoubleSpinBox" name="sigmaBoxDet">
-         <property name="decimals">
-          <number>3</number>
-         </property>
-        </widget>
-       </item>
-       <item row="14" column="1">
-        <widget class="QDoubleSpinBox" name="sigmaBoxTrans">
-         <property name="decimals">
-          <number>3</number>
-         </property>
-        </widget>
-       </item>
-       <item row="15" column="1">
-        <widget class="QDoubleSpinBox" name="sigmaBoxDiv">
-         <property name="decimals">
-          <number>3</number>
          </property>
         </widget>
        </item>

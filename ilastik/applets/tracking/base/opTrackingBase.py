@@ -226,8 +226,8 @@ class OpTrackingBase(Operator):
                 logger.info( " {} app at {}".format( len(app), i ) )
                 logger.info( " {} div at {}".format( len(div), i ) )
                 logger.info( " {} mov at {}".format( len(mov), i ) )
-            logger.info( " {} merger at {}".format( len(merger), i ) )
-            logger.info( " {} multiMoves at {}\n".format( len(multi), i ) )
+                logger.info( " {} merger at {}".format( len(merger), i ) )
+                logger.info( " {} multiMoves at {}\n".format( len(multi), i ) )
                 
                 label2color[it].append({})
                 mergers[it].append({})
@@ -241,35 +241,36 @@ class OpTrackingBase(Operator):
                         label2color[it][-1][int(e[0])] = np.random.randint(1, 255)
     
                 for e in mov:                
- 	               if not label2color[it][-2].has_key(int(e[0])):
-                        	f successive_ids:
-                        	label2color[it][-2][int(e[0])] = maxId
-                            	maxId += 1
-                        	label2color[it][-2][int(e[0])] = np.random.randint(1, 255)
+                    if not label2color[it][-2].has_key(int(e[0])):
+                        if successive_ids:
+                            label2color[it][-2][int(e[0])] = maxId
+                            maxId += 1
+                        else:
+                            label2color[it][-2][int(e[0])] = np.random.randint(1, 255)
                 moves_at.append(int(e[0]))
     
                 for e in div:
                     if not label2color[it][-2].has_key(int(e[0])):
                         if successive_ids:
-                      		label2color[it][-2][int(e[0])] = maxId
-                        	maxId += 1
-                        else:
-                            label2color[it][-2][e[0]] = np.random.randint(1, 255)
-                    ancestor_color = label2color[it][-2][e[0]]
-                    label2color[it][-1][e[1]] = ancestor_color
-                    label2color[it][-1][e[2]] = ancestor_color
-                
-                for e in merger:
-                    mergers[it][-1][e[0]] = e[1]
-    
-                for e in multi:
-                if int(e[2]) >= 0 and not label2color[time_range[0] + int(e[2])].has_key(int(e[0])):
-                        if successive_ids:
-                        label2color[time_range[0] + int(e[2])][int(e[0])] = maxId
+                            label2color[it][-2][int(e[0])] = maxId
                             maxId += 1
                         else:
-                        label2color[time_range[0] + int(e[2])][int(e[0])] = np.random.randint(1, 255)
-                label2color[-1][int(e[1])] = label2color[time_range[0] + int(e[2])][int(e[0])]
+                            label2color[it][-2][int(e[0])] = np.random.randint(1, 255)
+                    ancestor_color = label2color[it][-2][int(e[0])]
+                    label2color[it][-1][int(e[1])] = ancestor_color
+                    label2color[it][-1][int(e[2])] = ancestor_color
+                
+                for e in merger:
+                    mergers[it][-1][int(e[0])] = e[1]
+    
+                for e in multi:
+                    if int(e[2]) >= 0 and not label2color[it][time_range[0] + int(e[2])].has_key(int(e[0])):
+                        if successive_ids:
+                            label2color[it][time_range[0] + int(e[2])][int(e[0])] = maxId
+                            maxId += 1
+                        else:
+                            label2color[it][time_range[0] + int(e[2])][int(e[0])] = np.random.randint(1, 255)
+                label2color[it][-1][int(e[1])] = label2color[it][time_range[0] + int(e[2])][int(e[0])]
 
         # last timestep
         merger = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "merger", [])

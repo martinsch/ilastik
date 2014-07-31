@@ -60,7 +60,7 @@ class OpConservationTracking(OpTrackingBase):
             trange = range(roi.start[0], roi.stop[0])
             for ch in range(roi.start[-1], roi.stop[-1]):
                 for t in trange:
-                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and len(self.mergers) > t and len(self.mergers[t])):       
+                    if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and len(self.mergers) > t and len(self.mergers[t])):       
                         result[t-roi.start[0],...,ch] = relabelMergers(result[t-roi.start[0],...,0], self.mergers[t])
                     else:
                         result[t-roi.start[0],...][:] = 0
@@ -236,7 +236,7 @@ class OpConservationTracking(OpTrackingBase):
             raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
         
         events = {}
-        for i in range(iterations):            
+        for i in range(iterations):
             events[i] = get_events(eventsVector[i])
         
         self.Parameters.setValue(parameters, check_changed=False)
