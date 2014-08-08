@@ -33,7 +33,9 @@ from lazyflow.rtype import List
 from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache, OperatorWrapper, OpMultiArrayStacker
 from lazyflow.request import Request, RequestPool, RequestLock
 
-from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifier
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifier,\
+                                GaussianProcessClassifierFactory, GaussianProcessClassifier
+
 
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.utility.mode import mode
@@ -679,6 +681,7 @@ class OpObjectTrain(Operator):
     SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
     FixClassifier = InputSlot(stype="bool")
     ForestCount = InputSlot(stype="int", value=1)
+    ClassifierType =InputSlot(stype="object", value=ParallelVigraRfLazyflowClassifier)
 
     Classifier = OutputSlot()
     BadObjects = OutputSlot(stype=Opaque)
@@ -773,10 +776,21 @@ class OpObjectTrain(Operator):
         if featMatrix.size == 0 or labelsMatrix.size == 0:
             result[:] = None
             return
-        classifier_factory = ParallelVigraRfLazyflowClassifierFactory( self.ForestCount.value, self._tree_count )
-        classifier = classifier_factory.create_and_train( featMatrix.astype(numpy.float32), numpy.asarray(labelsMatrix, dtype=numpy.uint32) )
-        avg_oob = numpy.mean(classifier.oobs)
-        logger.info("training finished, average out-of-bag error: {}".format(avg_oob))
+        classifierType = self.ClassifierType.value
+        if classifierType==ParallelVigraRfLazyflowClassifier:
+            classifier_factory = ParallelVigraRfLazyflowClassifierFactory( self.ForestCount.value, self._tree_count )
+            classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix )
+            avg_oob = numpy.mean(classifier.oobs)
+            logger.info("training finished, average out-of-bag error: {}".format(avg_oob))
+        elif classifierType == GaussianProcessClassifier:
+            #GPy.kern.rbf(input_dim=1, variance=1., lengthscale=1.)
+            classifier_factory = GaussianProcessClassifierFactory(kernel = None,
+                                                                  num_inducing =  100,
+                                                                  normalize_Y = True
+                                                                  )
+            classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix)
+        else:
+            raise valueError,"the classifier class '{}' is unknown to ilastik".format(classifierType)
         result[0] = classifier
         return result
 
@@ -791,7 +805,6 @@ class OpObjectTrain(Operator):
                 any([len(bad_objects[i]) > 0 for i in bad_objects.keys()]):
             self.BadObjects.setValue({'objects': bad_objects,
                                       'feats': bad_feats})
-
 
 class OpObjectPredict(Operator):
     """Predicts object labels in a single image.

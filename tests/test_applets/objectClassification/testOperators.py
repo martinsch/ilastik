@@ -28,8 +28,8 @@ from lazyflow.graph import Graph
 from ilastik.applets.objectClassification.opObjectClassification import \
     OpRelabelSegmentation, OpObjectTrain, OpObjectPredict, OpObjectClassification, \
     OpBadObjectsToWarningMessage, OpMaxLabel
-    
-from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
+ 
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier, GaussianProcessClassifier
 
 from ilastik.applets import objectExtraction
 from ilastik.applets.objectExtraction.opObjectExtraction import \
@@ -129,7 +129,7 @@ class TestOpObjectTrain(unittest.TestCase):
        
         self.assertTrue(self.op.Classifier.ready(), "The output of operator {} was not ready after connections took place.".format(self.op))
         
-        classifier = self.op.Classifier.value        
+        classifier = self.op.Classifier.value
         self.assertIsInstance(classifier, ParallelVigraRfLazyflowClassifier)
             
             
@@ -234,7 +234,78 @@ class TestOpObjectPredict(unittest.TestCase):
         self.assertTrue( np.all(probChannel0Time01[0]==probs[0][:, 0]) )
         self.assertTrue( np.all(probChannel0Time01[1]==probs[1][:, 0]) )
         
+class TestOpObjectPredictGPC(unittest.TestCase):
+    def setUp(self):
+        segimg = segImage()
+        labels = {0 : np.array([0, 1, 2]),
+                  1 : np.array([0, 0, 0, 0,])}
 
+        rawimg = np.indices(segimg.shape).sum(0).astype(np.float32)
+        rawimg = rawimg.view(vigra.VigraArray)
+        rawimg.axistags = vigra.defaultAxistags('txyzc')
+        
+        g = Graph()
+        
+        features = {"Standard Object Features": {"Count":{}}}
+        
+        self.featsop = OpRegionFeatures(graph=g)
+        self.featsop.LabelImage.setValue(segimg)
+        self.featsop.RawImage.setValue( rawimg )
+        self.featsop.Features.setValue(features)
+        self.assertTrue(self.featsop.Output.ready(), "The output of operator {} was not ready after connections took place.".format(self.featsop))
+
+        self._opRegFeatsAdaptOutput = OpAdaptTimeListRoi(graph=g)
+        self._opRegFeatsAdaptOutput.Input.connect(self.featsop.Output)
+        self.assertTrue(self._opRegFeatsAdaptOutput.Output.ready(), "The output of operator {} was not ready after connections took place.".format(self._opRegFeatsAdaptOutput))
+
+        self.trainop = OpObjectTrain(graph=g)
+        self.trainop.ClassifierType.setValue(GaussianProcessClassifier)
+        self.trainop.Features.resize(1)
+        self.trainop.Features[0].connect(self._opRegFeatsAdaptOutput.Output)
+        self.trainop.SelectedFeatures.setValue(features)
+        self.trainop.Labels.resize(1)
+        self.trainop.Labels.setValues([labels])
+        self.trainop.FixClassifier.setValue(False)
+        self.trainop.ForestCount.setValue(1)
+        self.assertTrue(self.trainop.Classifier.ready(), "The output of operator {} was not ready after connections took place.".format(self.trainop))
+
+        self.op = OpObjectPredict(graph=g)
+        self.op.Classifier.connect(self.trainop.Classifier)
+        self.op.Features.connect(self._opRegFeatsAdaptOutput.Output)
+        self.op.SelectedFeatures.setValue(features)
+        self.op.LabelsCount.setValue(2)
+        self.assertTrue(self.op.Predictions.ready(), "The output of operator {} was not ready after connections took place.".format(self.op))
+
+    def test_predict(self):
+        ###
+        # test whether prediction works correctly
+        
+        # label 1 is 'big object', label 2 is 'small object'
+        ###
+        preds = self.op.Predictions([0, 1]).wait()
+        self.assertIsInstance(self.op.Classifier.value, GaussianProcessClassifier)
+        self.assertTrue(np.all(preds[0] == np.array([0, 1, 2])))
+        self.assertTrue(np.all(preds[1] == np.array([0, 1, 1, 2])))
+        
+    def test_probabilities(self):
+        ###
+        # test whether the probability channel slots and the total probability slot return the same values
+        ###
+        probs = self.op.Probabilities([0, 1]).wait()
+        probChannel0Time0 = self.op.ProbabilityChannels[0][0].wait()
+        probChannel1Time0 = self.op.ProbabilityChannels[1][0].wait()
+        probChannel0Time1 = self.op.ProbabilityChannels[0][1].wait()
+        probChannel1Time1 = self.op.ProbabilityChannels[1][1].wait()
+        probChannel0Time01 = self.op.ProbabilityChannels[0]([0, 1]).wait()
+        
+        self.assertTrue( np.all(probChannel0Time0[0]==probs[0][:, 0]) )
+        self.assertTrue( np.all(probChannel1Time0[0]==probs[0][:, 1]) )
+        
+        self.assertTrue( np.all(probChannel0Time1[1]==probs[1][:, 0]) )
+        self.assertTrue( np.all(probChannel1Time1[1]==probs[1][:, 1]) )
+        
+        self.assertTrue( np.all(probChannel0Time01[0]==probs[0][:, 0]) )
+        self.assertTrue( np.all(probChannel0Time01[1]==probs[1][:, 0]) )
  
 class TestFeatureSelection(unittest.TestCase):
     def setUp(self):
@@ -252,7 +323,6 @@ class TestFeatureSelection(unittest.TestCase):
         features = {"Standard Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, \
                                       "Coord<Minimum>":{}, "Coord<Maximum>":{}, "Mean":{}, \
                                       "Mean in neighborhood":{"margin":(30, 30, 1)}}}
-        
         sel_features = {"Standard Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}, "Variance":{}}}
         
         self.extrOp = OpObjectExtraction(graph=g)
