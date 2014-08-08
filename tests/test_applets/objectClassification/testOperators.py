@@ -27,7 +27,7 @@ import vigra
 from lazyflow.graph import Graph
 from ilastik.applets.objectClassification.opObjectClassification import \
     OpRelabelSegmentation, OpObjectTrain, OpObjectPredict, OpObjectClassification, \
-    OpBadObjectsToWarningMessage, OpMaxLabel
+    OpObjectPredictWithVariance, OpBadObjectsToWarningMessage, OpMaxLabel
  
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier, GaussianProcessClassifier
 
@@ -269,7 +269,7 @@ class TestOpObjectPredictGPC(unittest.TestCase):
         self.trainop.ForestCount.setValue(1)
         self.assertTrue(self.trainop.Classifier.ready(), "The output of operator {} was not ready after connections took place.".format(self.trainop))
 
-        self.op = OpObjectPredict(graph=g)
+        self.op = OpObjectPredictWithVariance(graph=g)
         self.op.Classifier.connect(self.trainop.Classifier)
         self.op.Features.connect(self._opRegFeatsAdaptOutput.Output)
         self.op.SelectedFeatures.setValue(features)
@@ -286,12 +286,15 @@ class TestOpObjectPredictGPC(unittest.TestCase):
         self.assertIsInstance(self.op.Classifier.value, GaussianProcessClassifier)
         self.assertTrue(np.all(preds[0] == np.array([0, 1, 2])))
         self.assertTrue(np.all(preds[1] == np.array([0, 1, 1, 2])))
+        variances = self.op.Variances([0, 1]).wait()
+        self.assertTrue(np.all(variances>0))
         
     def test_probabilities(self):
         ###
         # test whether the probability channel slots and the total probability slot return the same values
         ###
         probs = self.op.Probabilities([0, 1]).wait()
+        print probs
         probChannel0Time0 = self.op.ProbabilityChannels[0][0].wait()
         probChannel1Time0 = self.op.ProbabilityChannels[1][0].wait()
         probChannel0Time1 = self.op.ProbabilityChannels[0][1].wait()

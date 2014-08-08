@@ -589,7 +589,26 @@ class ObjectClassificationGui(LabelingGui):
             # put right after Labels, so that it is visible after hitting "live
             # predict".
             layers.insert(1, predictLayer)
+            
+        uncertaintySlot = self.op.UncertaintyImages
+        if uncertaintySlot.ready():
+            uncertaintysrc = LazyflowSource(uncertaintySlot)
+            self._colorTable16_forpmaps[0] = 0
+            uncertaintyLayer = AlphaModulatedLayer( uncertaintysrc,
+                                                 tintColor=QColor(Qt.black),
+                                                 range=(0.0, 1.0),
+                                                 normalize=(0.0, 0.25) )
 
+            uncertaintyLayer.name = "Uncertainty"
+            uncertaintyLayer.ref_object = None
+            uncertaintyLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+            uncertaintyLayer.opacity = 1
+            uncertaintyLayer.setToolTip("Uncertainty of Classification, by Variance of Classifier")
+            
+            # put right after Predictions, so that it is visible after hitting "live
+            # update".
+            layers.insert(2, uncertaintyLayer)
+            
         badObjectsSlot = self.op.BadObjectImages
         if badObjectsSlot.ready():
             ct_black = [0, QColor(Qt.black).rgba()]

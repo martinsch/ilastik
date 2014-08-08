@@ -104,11 +104,13 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     LabelImages = OutputSlot(level=1)
     Predictions = OutputSlot(level=1, stype=Opaque, rtype=List)
     Probabilities = OutputSlot(level=1, stype=Opaque, rtype=List)
+    Uncertainty = OutputSlot(level=1, stype=Opaque, rtype=List)
 
     # pulls whatever is in the cache, but does not try to compute more.
     CachedProbabilities = OutputSlot(level=1, stype=Opaque, rtype=List)
 
     PredictionImages = OutputSlot(level=1) #Labels, by the majority vote
+    UncertaintyImages = OutputSlot(level=1) #Uncertainty, by variance of Gaussian Process Classifier
     UncachedPredictionImages = OutputSlot(level=1)
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     ProbabilityChannelImage = OutputSlot(level=1)
@@ -133,11 +135,15 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         # internal operators
         opkwargs = dict(parent=self)
         self.opTrain = OpObjectTrain(parent=self)
-        self.opPredict = OpMultiLaneWrapper(OpObjectPredict, **opkwargs)
+        self.opPredict = OpMultiLaneWrapper(OpObjectPredictWithVariance, **opkwargs)
         self.opLabelsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
         self.opPredictionsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
+        self.opUncertaintyToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
         self.opPredictionImageCache = OpMultiLaneWrapper(OpSlicedBlockedArrayCache, **opkwargs)
         self.opPredictionImageCache.name="OpObjectClassification.opPredictionImageCache"
+        self.opUncertaintyImageCache = OpMultiLaneWrapper(OpSlicedBlockedArrayCache, **opkwargs)
+        self.opUncertaintyImageCache.name="OpObjectClassification.opUncertaintyImageCache"
+        
         
         self.opProbabilityChannelsToImage = OpMultiLaneWrapper(OpMultiRelabelSegmentation, **opkwargs)
         self.opBadObjectsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
@@ -150,6 +156,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opTrain.Features.connect(self.ObjectFeatures)
         self.opTrain.Labels.connect(self.LabelInputs)
         self.opTrain.FixClassifier.setValue(False)
+        self.opTrain.ClassifierType.setValue(GaussianProcessClassifier)
         self.opTrain.SelectedFeatures.connect(self.SelectedFeatures)
 
         self.classifier_cache.Input.connect(self.opTrain.Classifier)
@@ -173,14 +180,22 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opPredictionsToImage.Image.connect(self.SegmentationImages)
         self.opPredictionsToImage.ObjectMap.connect(self.opPredict.Predictions)
         self.opPredictionsToImage.Features.connect(self.ObjectFeatures)
-
+        
+        self.opUncertaintyToImage.Image.connect(self.SegmentationImages)
+        self.opUncertaintyToImage.ObjectMap.connect(self.opPredict.Variances)
+        self.opUncertaintyToImage.Features.connect(self.ObjectFeatures)
+        
         #self.opPredictionImageCache.name = "prediction_image_cache"
         self.opPredictionImageCache.fixAtCurrent.connect( self.FreezePredictions )
         self.opPredictionImageCache.Input.connect( self.opPredictionsToImage.Output )
+        
+        self.opUncertaintyImageCache.fixAtCurrent.connect( self.FreezePredictions )
+        self.opUncertaintyImageCache.Input.connect( self.opUncertaintyToImage.Output )
 
         self.opProbabilityChannelsToImage.Image.connect(self.SegmentationImages)
         self.opProbabilityChannelsToImage.ObjectMaps.connect(self.opPredict.ProbabilityChannels)
         self.opProbabilityChannelsToImage.Features.connect(self.ObjectFeatures)
+        
         
         class OpWrappedCache(Operator):
             """
@@ -215,7 +230,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opProbChannelsImageCache.Input.connect(self.opProbabilityChannelsToImage.Output)
         self.opProbChannelsImageCache.fixAtCurrent.connect( self.FreezePredictions )
         
-        
         self.opBadObjectsToImage.Image.connect(self.SegmentationImages)
         self.opBadObjectsToImage.ObjectMap.connect(self.opPredict.BadObjects)
         self.opBadObjectsToImage.Features.connect(self.ObjectFeatures)
@@ -247,8 +261,10 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.LabelImages.connect(self.opLabelsToImage.Output)
         self.Predictions.connect(self.opPredict.Predictions)
         self.Probabilities.connect(self.opPredict.Probabilities)
+        self.Uncertainty.connect(self.opPredict.Variances)
         self.CachedProbabilities.connect(self.opPredict.CachedProbabilities)
         self.PredictionImages.connect(self.opPredictionImageCache.Output)
+        self.UncertaintyImages.connect(self.opUncertaintyImageCache.Output)
         self.UncachedPredictionImages.connect(self.opPredictionsToImage.Output)
         self.PredictionProbabilityChannels.connect(self.opProbChannelsImageCache.Output)
         self.ProbabilityChannelImage.connect( self.opStackProbabilities.Output )
@@ -363,6 +379,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.opPredictionImageCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.opPredictionImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+        self.opUncertaintyImageCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+        self.opUncertaintyImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
         self.opProbChannelsImageCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.opProbChannelsImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
@@ -1013,7 +1031,226 @@ class OpObjectPredict(Operator):
             joint_table = rfn.merge_arrays(columns, flatten = True, usemask = False)
             return joint_table
 
+class OpObjectPredictWithVariance(Operator):
+    """Predicts object labels in a single image.
 
+    Performs prediction on all objects in a time slice at once, and
+    caches the result.
+
+    """
+    # WARNING: right now we predict and cache a whole time slice. We
+    # expect this to be fast because there are relatively few objects
+    # compared to the number of pixels in pixel classification. If
+    # this should be too slow, we should instead cache at the object
+    # level, and only predict for objects visible in the roi.
+
+    name = "OpObjectPredictWithVariance"
+
+    Features = InputSlot(rtype=List, stype=Opaque)
+    SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
+    Classifier = InputSlot()
+    LabelsCount = InputSlot(stype='integer')
+    InputProbabilities = InputSlot(stype=Opaque, rtype=List, optional=True)
+
+    Predictions = OutputSlot(stype=Opaque, rtype=List)
+    Probabilities = OutputSlot(stype=Opaque, rtype=List)
+    CachedProbabilities = OutputSlot(stype=Opaque, rtype=List)
+    ProbabilityChannels = OutputSlot(stype=Opaque, rtype=List, level=1)
+    BadObjects = OutputSlot(stype=Opaque, rtype=List)
+    Variances = OutputSlot(stype=Opaque, rtype=List)
+
+    #SegmentationThreshold = 0.5
+
+    def setupOutputs(self):
+        self.Predictions.meta.shape = self.Features.meta.shape
+        self.Predictions.meta.dtype = object
+        self.Predictions.meta.axistags = None
+        self.Predictions.meta.mapping_dtype = numpy.uint8
+
+        self.Probabilities.meta.shape = self.Features.meta.shape
+        self.Probabilities.meta.dtype = object
+        self.Probabilities.meta.mapping_dtype = numpy.float32
+        self.Probabilities.meta.axistags = None
+        
+        self.Variances.meta.shape = self.Features.meta.shape
+        self.Variances.meta.dtype = object
+        self.Variances.meta.mapping_dtype = numpy.float32
+        self.Variances.meta.axistags = None
+
+        self.BadObjects.meta.shape = self.Features.meta.shape
+        self.BadObjects.meta.dtype = object
+        self.BadObjects.meta.mapping_dtype = numpy.uint8
+        self.BadObjects.meta.axistags = None
+
+        if self.LabelsCount.ready():
+            nlabels = self.LabelsCount[:].wait()
+            nlabels = int(nlabels[0])
+            self.ProbabilityChannels.resize(nlabels)
+            for oslot in self.ProbabilityChannels:
+                oslot.meta.shape = self.Features.meta.shape
+                oslot.meta.dtype = object
+                oslot.meta.axistags = None
+                oslot.meta.mapping_dtype = numpy.float32
+
+        self.lock = RequestLock()
+        self.prob_cache = dict()
+        self.var_cache = dict()
+        self.bad_objects = dict()
+
+    def execute(self, slot, subindex, roi, result):
+        assert slot in [self.Predictions,
+                        self.Probabilities,
+                        self.Variances,
+                        self.CachedProbabilities,
+                        self.ProbabilityChannels,
+                        self.BadObjects]
+
+        times = roi._l
+        if len(times) == 0:
+            # we assume that 0-length requests are requesting everything
+            times = range(self.Predictions.meta.shape[0])
+
+        if slot is self.CachedProbabilities:
+            return {t: self.prob_cache[t] for t in times if t in self.prob_cache}
+
+        classifier = self.Classifier.value
+        if classifier is None:
+            # this happens if there was no data to train with
+            return dict((t, numpy.array([])) for t in times)
+
+        feats = {}
+        prob_predictions = {}
+        var = {}
+
+        selected = self.SelectedFeatures([]).wait()
+
+        # FIXME: self.prob_cache is shared, so we need to block.
+        # However, this makes prediction single-threaded.
+        with self.lock:
+            for t in times:
+                if t in self.prob_cache:
+                    continue
+
+                tmpfeats = self.Features([t]).wait()
+                ftmatrix, _, col_names = make_feature_array(tmpfeats, selected)
+                rows, cols = replace_missing(ftmatrix)
+                self.bad_objects[t] = numpy.zeros((ftmatrix.shape[0],))
+                self.bad_objects[t][rows] = 1
+                feats[t] = ftmatrix
+                prob_predictions[t] = 0
+                var[t] = 0
+
+            def predict_forest(_t):
+                # Note: We can't use RandomForest.predictLabels() here because we're training in parallel,
+                #        and we have to average the PROBABILITIES from all forests.
+                #       Averaging the label predictions from each forest is NOT equivalent.
+                #       For details please see wikipedia:
+                #       http://en.wikipedia.org/wiki/Electoral_College_%28United_States%29#Irrelevancy_of_national_popular_vote
+                #       (^-^)
+                prob_predictions[_t],var[_t] = classifier.predict_probabilities(feats[_t].astype(numpy.float32),with_variance = True)
+
+            # predict the data with all the forests in parallel
+            pool = RequestPool()
+            for t in times:
+                if t in self.prob_cache:
+                    continue
+                req = Request( partial(predict_forest, t) )
+                pool.add(req)
+
+            pool.wait()
+            pool.clean()
+            
+            for t in times:
+                if t not in self.prob_cache:
+                    # prob_predictions is a dict-of-arrays, indexed as follows:
+                    # prob_predictions[t][object_index, class_index]
+                    self.prob_cache[t] = prob_predictions[t]
+                    self.prob_cache[t][0] = 0 # Background probability is always zero
+                    self.var_cache[t] = var[t]
+                    self.var_cache[t][0] = 0
+
+
+            if slot == self.Probabilities:
+                return { t : self.prob_cache[t] for t in times }
+            elif slot == self.Predictions:
+                # FIXME: Support SegmentationThreshold again...
+                labels = dict()
+                for t in times:
+                    prob_sum = numpy.sum(self.prob_cache[t], axis=1)
+                    labels[t] = 1 + numpy.argmax(self.prob_cache[t], axis=1)
+                    labels[t][0] = 0 # Background gets the zero label
+                
+                return labels
+
+            elif slot == self.ProbabilityChannels:
+                try:
+                    prob_single_channel = {t: self.prob_cache[t][:, subindex[0]]
+                                           for t in times}
+                except:
+                    # no probabilities available for this class; return zeros
+                    prob_single_channel = {t: numpy.zeros((self.prob_cache[t].shape[0], 1))
+                                           for t in times}
+                return prob_single_channel
+            elif slot == self.Variances:
+                return { t : self.var_cache[t] for t in times }
+            elif slot == self.BadObjects:
+                return { t : self.bad_objects[t] for t in times }
+            else:
+                assert False, "Unknown input slot"
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.prob_cache = {}
+        if slot is self.InputProbabilities:
+            self.prob_cache = self.InputProbabilities([]).wait()
+        self.Predictions.setDirty(())
+        self.Variances.setDirty([])
+        self.Probabilities.setDirty(())
+        self.ProbabilityChannels.setDirty(())
+
+    def createExportTable(self, roi):
+        if not self.Predictions.ready() or not self.Features.ready():
+            return None
+        
+        features = self.Features(roi).wait()
+        feature_table = OpObjectExtraction.createExportTable(features)
+        predictions = self.Predictions(roi).wait()
+        probs = self.Probabilities(roi).wait()
+        nobjs = []
+        for t, preds in predictions.iteritems():
+            nobjs.append(preds.shape[0])
+        nobjs_total = sum(nobjs)
+        if nobjs_total==0:
+            logger.info("Prediction not run yet, won't be exported")
+            return feature_table
+        else:
+            assert nobjs_total==feature_table.shape[0]
+            
+            def fill_column(slot_value, column, name, channel=None):
+                start = 0
+                finish = start
+                for t, values in slot_value.iteritems():
+                    #FIXME: remove the first object, it's always background
+                    finish = start + nobjs[t]
+                    if channel is None:
+                        column[name][start:finish] = values[:]
+                    else:
+                        column[name][start:finish] = values[:, channel]
+                    start = finish
+                    
+            pred_column = numpy.zeros(nobjs_total, {'names': ['Prediction'], 'formats': [numpy.dtype(numpy.uint8)]})
+            fill_column(predictions, pred_column, "Prediction")
+            joint_table = rfn.merge_arrays((feature_table, pred_column), flatten = True, usemask = False)
+            nchannels = probs[0].shape[-1]
+            columns = [feature_table, pred_column]
+            for ich in range(nchannels):
+                prob_column = numpy.zeros(nobjs_total, {'names': ['Probability of class %d'%ich], \
+                                                      'formats': [numpy.dtype(numpy.float32)]})
+                fill_column(probs, prob_column, 'Probability of class %d'%ich, ich)
+                columns.append(prob_column)
+                
+            joint_table = rfn.merge_arrays(columns, flatten = True, usemask = False)
+            return joint_table
+    
 
 class OpRelabelSegmentation(Operator):
     """Takes a segmentation image and a mapping and returns the
