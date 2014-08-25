@@ -595,9 +595,9 @@ class ObjectClassificationGui(LabelingGui):
             uncertaintysrc = LazyflowSource(uncertaintySlot)
             self._colorTable16_forpmaps[0] = 0
             uncertaintyLayer = AlphaModulatedLayer( uncertaintysrc,
-                                                 tintColor=QColor(Qt.black),
-                                                 range=(0.0, 1.0),
-                                                 normalize=(0.0, 0.25) )
+                                                 tintColor=QColor(100,149,237), #cornflower blue
+                                                 range=(0.0, 1.0))
+                                                # normalize=(0.0, 0.25))
 
             uncertaintyLayer.name = "Uncertainty"
             uncertaintyLayer.ref_object = None
