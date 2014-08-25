@@ -34,7 +34,7 @@ from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier, GaussianProc
 from ilastik.applets import objectExtraction
 from ilastik.applets.objectExtraction.opObjectExtraction import \
     OpRegionFeatures, OpAdaptTimeListRoi, OpObjectExtraction
-
+import GPy.util.classification
 
 def segImage():
     '''
@@ -51,6 +51,30 @@ def segImage():
     img[1, 20:25, 20:25, 20:25, 0] = 3
     
     img = img.view(vigra.VigraArray)
+    img.axistags = vigra.defaultAxistags('txyzc')    
+    return img
+
+def sample_image(samples_each):
+    '''
+    test image X x (210+X) x 1 over two time steps
+    first time step to be used for labeling
+    second time step to be used for pred
+    '''
+    img = np.zeros((2, samples_each, 210 + samples_each, 1, 1), dtype=np.int)
+    for i in range(samples_each):
+        # training objects:
+        # big objects (class 0)
+        img[0, i, 0:100 + i, 0, 0 ] = i + 1
+        # small objects (class 1)
+        img[0, i, 200:210 + i, 0, 0 ] = samples_each + i + 1
+    
+        # test objects:
+        # big objects
+        img[1, i, 0:100 - i, 0, 0 ] = i + 1
+        # small objects 
+        img[1, i, 200:(210 + samples_each / 2) - i ] = samples_each + i + 1
+    
+    img =  img.view(vigra.VigraArray)
     img.axistags = vigra.defaultAxistags('txyzc')    
     return img
 
@@ -202,6 +226,8 @@ class TestOpObjectPredict(unittest.TestCase):
         self.op.Features.connect(self._opRegFeatsAdaptOutput.Output)
         self.op.SelectedFeatures.setValue(features)
         self.op.LabelsCount.setValue(2)
+        
+        self.assertEqual(self.trainop.ClassifierType.value,ParallelVigraRfLazyflowClassifier,"classifier type is supposed to be Vigra Random Forest by default.")
         self.assertTrue(self.op.Predictions.ready(), "The output of operator {} was not ready after connections took place.".format(self.op))
 
     def test_predict(self):
@@ -274,6 +300,7 @@ class TestOpObjectPredictGPC(unittest.TestCase):
         self.op.Features.connect(self._opRegFeatsAdaptOutput.Output)
         self.op.SelectedFeatures.setValue(features)
         self.op.LabelsCount.setValue(2)
+        self.assertEqual(self.trainop.ClassifierType.value,GaussianProcessClassifier,"classifier type was set to GaussianProcessClassifier.")
         self.assertTrue(self.op.Predictions.ready(), "The output of operator {} was not ready after connections took place.".format(self.op))
 
     def test_predict(self):
@@ -309,7 +336,78 @@ class TestOpObjectPredictGPC(unittest.TestCase):
         
         self.assertTrue( np.all(probChannel0Time01[0]==probs[0][:, 0]) )
         self.assertTrue( np.all(probChannel0Time01[1]==probs[1][:, 0]) )
- 
+
+class TestClassificationGPC(unittest.TestCase):
+    def setUp(self):
+        samples_each = 10
+        self.img = sample_image(samples_each)
+        
+        # training objects
+        all_ids = np.unique(self.img[0, ...]).tolist()
+        all_ids.remove(0)
+        # features: Count and Max
+        self.X = np.array([ [np.sum(self.img[0, ...] == i), i] for i in all_ids  ])
+        # smaller ids are samples of class 0, the others are class 1
+        
+        #insert unlabeled object 
+        self.Y = np.array([[-1,] + [0, ] * samples_each + [1, ] * samples_each ]).transpose()
+        
+        # test objects
+        all_ids = np.unique(self.img[1, ...]).tolist()
+        all_ids.remove(0)
+        self.Xtest = np.array([ [np.sum(self.img[1, ...] == i), i] for i in all_ids  ])
+        self.Ytest = np.array([ [0, ] * samples_each + [1, ] * samples_each ]).transpose()
+        
+        g = Graph()
+        features = {"Standard Object Features": {"Count":{},"Maximum":{}}}
+        
+        self.featsop = OpRegionFeatures(graph=g)
+        self.featsop.LabelImage.setValue(self.img )
+        self.featsop.RawImage.setValue( self.img )
+        self.featsop.Features.setValue(features)
+        self.assertTrue(self.featsop.Output.ready(), "The output of operator {} was not ready after connections took place.".format(self.featsop))
+
+        self._opRegFeatsAdaptOutput = OpAdaptTimeListRoi(graph=g)
+        self._opRegFeatsAdaptOutput.Input.connect(self.featsop.Output)
+        self.assertTrue(self._opRegFeatsAdaptOutput.Output.ready(), "The output of operator {} was not ready after connections took place.".format(self._opRegFeatsAdaptOutput))
+
+        self.trainop = OpObjectTrain(graph=g)
+        self.trainop.ClassifierType.setValue(GaussianProcessClassifier)
+        self.trainop.Features.resize(1)
+        self.trainop.Features[0].connect(self._opRegFeatsAdaptOutput.Output)
+        self.trainop.SelectedFeatures.setValue(features)
+        self.trainop.Labels.resize(1)
+        self.Y 
+        labels = {0:self.Y+1,1:self.Y*0}
+        print labels
+        # first timestep is labeled, second shall be classified
+        self.trainop.Labels.setValues([labels])
+        self.trainop.FixClassifier.setValue(False)
+        self.assertTrue(self.trainop.Classifier.ready(), "The output of operator {} was not ready after connections took place.".format(self.trainop))
+
+        self.op = OpObjectPredictWithVariance(graph=g)
+        self.op.Classifier.connect(self.trainop.Classifier)
+        self.op.Features.connect(self._opRegFeatsAdaptOutput.Output)
+        self.op.SelectedFeatures.setValue(features)
+        self.op.LabelsCount.setValue(2)
+        self.assertEqual(self.trainop.ClassifierType.value,GaussianProcessClassifier,"classifier type was set to GaussianProcessClassifier in this test.")
+        self.assertTrue(self.op.Predictions.ready(), "The output of operator {} was not ready after connections took place.".format(self.op))
+
+        
+        
+    def test_classify(self):
+        
+        probs = self.op.Probabilities([0, 1]).wait()
+        vars  = self.op.Variances([0,1]).wait()
+        
+        #choose probability for label 1, which is the predicted one
+        
+        print 'sigmoid(mean) =', probs[1][1:,1]
+        print 'var =', vars[1][1:,0]
+        
+        GPy.util.classification.conf_matrix(probs[1][1:,1], self.Ytest)
+
+
 class TestFeatureSelection(unittest.TestCase):
     def setUp(self):
         segimg = segImage()
