@@ -65,7 +65,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
             self._drawer.bordWidthBox.setValue(parameters['borderAwareWidth'])
         if 'sigma' in parameters.keys():
             #backwards-compatibility
-            if type(parameters['sigma'])!=list:
+            if type(parameters['sigma'])==float:
                 parameters['sigma']=[parameters['sigma']]*5
             for sigmab,sigma in zip(self.sigmaBoxes,parameters['sigma']):
                 sigmab.setValue(sigma)
