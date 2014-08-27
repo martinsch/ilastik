@@ -178,6 +178,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
         opTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
+        opTracking.DivisionUncertainty.connect( opDivDetection.Uncertainty )
+        opTracking.DetectionUncertainty.connect( opCellClassification.Uncertainty )
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
     
         opDataExport.Inputs.resize(3)

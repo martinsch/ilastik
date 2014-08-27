@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 class OpConservationTracking(OpTrackingBase):
     DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
+    DivisionUncertainty = InputSlot(stype=Opaque, rtype=List,optional=True)
+    DetectionUncertainty = InputSlot(stype=Opaque, rtype=List,optional=True)
     NumLabels = InputSlot()   
     NumIterations = InputSlot(value=10)
 
@@ -56,12 +58,11 @@ class OpConservationTracking(OpTrackingBase):
             
             result = self.LabelImage.get(croi).wait()            
             parameters = self.Parameters.value
-            
             trange = range(roi.start[0], roi.stop[0])
             for ch in range(roi.start[-1], roi.stop[-1]):
                 for t in trange:
-                    if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and len(self.mergers) > t and len(self.mergers[t])):       
-                        result[t-roi.start[0],...,ch] = relabelMergers(result[t-roi.start[0],...,0], self.mergers[t])
+                    if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and len(self.mergers[ch]) > t and len(self.mergers[ch][t])):       
+                        result[t-roi.start[0],...,ch] = relabelMergers(result[t-roi.start[0],...,0], self.mergers[ch][t])
                     else:
                         result[t-roi.start[0],...][:] = 0
             
@@ -147,6 +148,10 @@ class OpConservationTracking(OpTrackingBase):
         coordinate_map = pgmlink.TimestepIdCoordinateMap()
         if withArmaCoordinates:
             coordinate_map.initialize()
+        
+        #do with Uncertainty if this is possible
+        withUncertainty = (self.DivisionUncertainty.ready() or not withDivisions) and self.DetectionUncertainty.ready()
+        
         ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
@@ -154,7 +159,8 @@ class OpConservationTracking(OpTrackingBase):
                                                                       with_opt_correction=withOpticalCorrection,
                                                                       with_coordinate_list=withMergerResolution , # no vigra coordinate list, that is done by arma
                                                                       with_classifier_prior=withClassifierPrior,
-                                                                      coordinate_map=coordinate_map)
+                                                                      coordinate_map=coordinate_map,
+                                                                      with_uncertainty=withUncertainty)
         
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'
