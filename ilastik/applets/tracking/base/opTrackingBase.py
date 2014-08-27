@@ -275,14 +275,14 @@ class OpTrackingBase(Operator):
                         else:
                             label2color[it][time_range[0] + int(e[2])][int(e[0])] = np.random.randint(1, 255)
                     label2color[it][-1][int(e[1])] = label2color[it][time_range[0] + int(e[2])][int(e[0])]
-
+                    
             # last timestep
             merger = get_dict_value(events[it][str(time_range[-1] - time_range[0] + 1)], "merger", [])
             mergers[it].append({})
             for e in merger:
                 mergers[it][-1][int(e[0])] = int(e[1])
-
-
+    
+    
             # mark the filtered objects
             for i in filtered_labels.keys():
                 if int(i)+time_range[0] >= len(label2color[it]):
@@ -290,7 +290,7 @@ class OpTrackingBase(Operator):
                 fl_at = filtered_labels[i]
                 for l in fl_at:
                     assert l not in label2color[it][int(i)+time_range[0]]
-                    label2color[it][int(i)+time_range[0]][l] = 0                
+                    label2color[it][int(i)+time_range[0]][l] = 0     
     
         self.label2color = label2color
         self.mergers = mergers        
@@ -334,7 +334,8 @@ class OpTrackingBase(Operator):
                                with_opt_correction=False,
                                with_coordinate_list=False,
                                with_classifier_prior=False,
-                               coordinate_map = None):
+                               coordinate_map = None,
+                               with_uncertainty=False):
                 
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
@@ -358,6 +359,8 @@ class OpTrackingBase(Operator):
             if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
                 raise Exception, "Classifier not yet ready. Did you forget to train the Division Detection Classifier?"
             divProbs = self.DivisionProbabilities(time_range).wait()
+            if with_uncertainty:
+                divUnc = self.DivisionUncertainty(time_range).wait()
         
         if with_local_centers:
             localCenters = self.RegionLocalCenters(time_range).wait()
@@ -366,6 +369,8 @@ class OpTrackingBase(Operator):
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
                 raise Exception, "Classifier not yet ready. Did you forget to train the Object Count Classifier?"
             detProbs = self.DetectionProbabilities(time_range).wait()
+            if with_uncertainty:
+                detUnc = self.DetectionUncertainty(time_range).wait()
             
         logger.info( "filling traxelstore" )
         ts = pgmlink.TraxelStore()
@@ -424,7 +429,7 @@ class OpTrackingBase(Operator):
                 tr.set_z_scale(z_scale)
                 tr.Id = int(idx + 1)
                 tr.Timestep = t
-
+                
                 # pgmlink expects always 3 coordinates, z=0 for 2d data
                 tr.add_feature_array("com", 3)
                 for i, v in enumerate([x,y,z]):
@@ -441,9 +446,12 @@ class OpTrackingBase(Operator):
                     tr.add_feature_array("divProb", 1)
                     # idx+1 because rc and ct start from 1, divProbs starts from 0
                     tr.set_feature_value("divProb", 0, float(divProbs[t][idx+1][1]))
-
+                    if with_uncertainty:
+                        tr.add_feature_array("divUnc",1)
+                        tr.set_feature_value("divUnc",0,float(divUnc[t][idx+1]))
                 if with_classifier_prior:
                     tr.add_feature_array("detProb", len(detProbs[t][idx+1]))
+                    
                     for i, v in enumerate(detProbs[t][idx+1]):
                         val = float(v)
                         if val < 0.0000001:
@@ -451,6 +459,9 @@ class OpTrackingBase(Operator):
                         if val > 0.99999999:
                             val = 0.99999999
                         tr.set_feature_value("detProb", i, float(v))
+                    
+                    tr.add_feature_array("detUnc",1)
+                    tr.set_feature_value("detUnc",0,float(detUnc[t][idx+1]))
                         
                 
                 # FIXME: check whether it is 2d or 3d data!
@@ -467,7 +478,7 @@ class OpTrackingBase(Operator):
                 tr.set_feature_value("count", 0, float(size))
                 if median_object_size is not None:
                     obj_sizes.append(float(size))
-
+                
                 
                 #self._addFeatures(tr, features='all')
 
