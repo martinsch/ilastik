@@ -95,6 +95,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     # for reading from disk
     InputProbabilities = InputSlot(level=1, stype=Opaque, rtype=List, optional=True)
+    InputUncertainty = InputSlot(level=1, stype=Opaque, rtype=List, optional=True)
 
     ################
     # Output slots #
@@ -108,6 +109,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     # pulls whatever is in the cache, but does not try to compute more.
     CachedProbabilities = OutputSlot(level=1, stype=Opaque, rtype=List)
+    CachedUncertainty = OutputSlot(level=1, stype=Opaque, rtype=List)
 
     PredictionImages = OutputSlot(level=1) #Labels, by the majority vote
     UncertaintyImages = OutputSlot(level=1) #Uncertainty, by variance of Gaussian Process Classifier
@@ -156,9 +158,10 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opTrain.Features.connect(self.ObjectFeatures)
         self.opTrain.Labels.connect(self.LabelInputs)
         self.opTrain.FixClassifier.setValue(False)
-        self.opTrain.ClassifierType.setValue(GaussianProcessClassifier)
+        self.opTrain.ClassifierType.setValue(GaussianProcessClassifier)#ParallelVigraRfLazyflowClassifier
+        
         self.opTrain.SelectedFeatures.connect(self.SelectedFeatures)
-
+        
         self.classifier_cache.Input.connect(self.opTrain.Classifier)
 
         # Find the highest label in all the label images
@@ -237,6 +240,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opBadObjectsToWarningMessage.BadObjects.connect(self.opTrain.BadObjects)
 
         self.opPredict.InputProbabilities.connect(self.InputProbabilities)
+        self.opPredict.InputVariances.connect(self.InputUncertainty)
 
         def _updateNumClasses(*args):
             """
@@ -263,6 +267,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.Probabilities.connect(self.opPredict.Probabilities)
         self.Uncertainty.connect(self.opPredict.Variances)
         self.CachedProbabilities.connect(self.opPredict.CachedProbabilities)
+        self.CachedUncertainty.connect(self.opPredict.CachedVariances)
         self.PredictionImages.connect(self.opPredictionImageCache.Output)
         self.UncertaintyImages.connect(self.opUncertaintyImageCache.Output)
         self.UncachedPredictionImages.connect(self.opPredictionsToImage.Output)
@@ -794,6 +799,7 @@ class OpObjectTrain(Operator):
         if featMatrix.size == 0 or labelsMatrix.size == 0:
             result[:] = None
             return
+        
         classifierType = self.ClassifierType.value
         if classifierType==ParallelVigraRfLazyflowClassifier:
             classifier_factory = ParallelVigraRfLazyflowClassifierFactory( self.ForestCount.value, self._tree_count )
@@ -809,6 +815,7 @@ class OpObjectTrain(Operator):
             classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix)
         else:
             raise valueError,"the classifier class '{}' is unknown to ilastik".format(classifierType)
+        
         result[0] = classifier
         return result
 
@@ -1051,10 +1058,12 @@ class OpObjectPredictWithVariance(Operator):
     Classifier = InputSlot()
     LabelsCount = InputSlot(stype='integer')
     InputProbabilities = InputSlot(stype=Opaque, rtype=List, optional=True)
+    InputVariances = InputSlot(stype=Opaque, rtype=List, optional=True)
 
     Predictions = OutputSlot(stype=Opaque, rtype=List)
     Probabilities = OutputSlot(stype=Opaque, rtype=List)
     CachedProbabilities = OutputSlot(stype=Opaque, rtype=List)
+    CachedVariances = OutputSlot(stype=Opaque, rtype=List)
     ProbabilityChannels = OutputSlot(stype=Opaque, rtype=List, level=1)
     BadObjects = OutputSlot(stype=Opaque, rtype=List)
     Variances = OutputSlot(stype=Opaque, rtype=List)
@@ -1102,9 +1111,10 @@ class OpObjectPredictWithVariance(Operator):
                         self.Probabilities,
                         self.Variances,
                         self.CachedProbabilities,
+                        self.CachedVariances,
                         self.ProbabilityChannels,
                         self.BadObjects]
-
+        
         times = roi._l
         if len(times) == 0:
             # we assume that 0-length requests are requesting everything
@@ -1112,8 +1122,11 @@ class OpObjectPredictWithVariance(Operator):
 
         if slot is self.CachedProbabilities:
             return {t: self.prob_cache[t] for t in times if t in self.prob_cache}
+        if slot is self.CachedVariances:
+            return {t: self.var_cache[t] for t in times if t in self.var_cache}
 
         classifier = self.Classifier.value
+        
         if classifier is None:
             # this happens if there was no data to train with
             return dict((t, numpy.array([])) for t in times)
@@ -1128,7 +1141,7 @@ class OpObjectPredictWithVariance(Operator):
         # However, this makes prediction single-threaded.
         with self.lock:
             for t in times:
-                if t in self.prob_cache:
+                if t in self.prob_cache and t in self.var_cache:
                     continue
 
                 tmpfeats = self.Features([t]).wait()
@@ -1152,7 +1165,7 @@ class OpObjectPredictWithVariance(Operator):
             # predict the data with all the forests in parallel
             pool = RequestPool()
             for t in times:
-                if t in self.prob_cache:
+                if t in self.prob_cache and t in self.var_cache:
                     continue
                 req = Request( partial(predict_forest, t) )
                 pool.add(req)
@@ -1166,6 +1179,11 @@ class OpObjectPredictWithVariance(Operator):
                     # prob_predictions[t][object_index, class_index]
                     self.prob_cache[t] = prob_predictions[t]
                     self.prob_cache[t][0] = 0 # Background probability is always zero
+                #Backwards compatibility:
+                #    actually, prob_cache has entry with key 't' iff var_cache has
+                #    however, deserializing old projects that only store cached probability
+                #    leads to a state where this is not the case. So let's add these lines to be sure.
+                if t not in self.var_cache:
                     self.var_cache[t] = var[t]
                     self.var_cache[t][0] = 0
 
@@ -1199,9 +1217,15 @@ class OpObjectPredictWithVariance(Operator):
                 assert False, "Unknown input slot"
 
     def propagateDirty(self, slot, subindex, roi):
-        self.prob_cache = {}
+        
         if slot is self.InputProbabilities:
             self.prob_cache = self.InputProbabilities([]).wait()
+        elif slot is self.InputVariances:
+            self.var_cache = self.InputVariances([]).wait()
+        else:
+            self.prob_cache = {}
+            self.var_cache  = {}
+        
         self.Predictions.setDirty(())
         self.Variances.setDirty([])
         self.Probabilities.setDirty(())

@@ -57,6 +57,9 @@ class ObjectClassificationSerializer(AppletSerializer):
             SerialDictSlot(operator.CachedProbabilities,
                            operator.InputProbabilities,
                            transform=int),
+            SerialDictSlot(operator.CachedUncertainty,
+                           operator.InputUncertainty,
+                           transform=int),
             #SerialDictSlotWithoutDeserialization(operator.Probabilities, operator, transform=str)
         ]
 
