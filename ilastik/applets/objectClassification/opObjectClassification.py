@@ -810,7 +810,8 @@ class OpObjectTrain(Operator):
             #GPy.kern.rbf(input_dim=1, variance=1., lengthscale=1.)
             classifier_factory = GaussianProcessClassifierFactory(kernel = None,
                                                                   num_inducing =  100,
-                                                                  normalize_Y = True
+                                                                  normalize_Y = True,
+                                                                  normalize_X = True
                                                                   )
             classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix)
         else:

@@ -359,7 +359,7 @@ class TestClassificationGPC(unittest.TestCase):
         self.Ytest = np.array([ [0, ] * samples_each + [1, ] * samples_each ]).transpose()
         
         g = Graph()
-        features = {"Standard Object Features": {"Count":{},"Maximum":{}}}
+        features = {"Standard Object Features": {"Count":{}, "Maximum":{}, "RegionRadii":{}, "RegionRadii":{}, "Minimum":{}}}
         
         self.featsop = OpRegionFeatures(graph=g)
         self.featsop.LabelImage.setValue(self.img )
