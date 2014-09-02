@@ -204,7 +204,7 @@ class OpConservationTracking(OpTrackingBase):
         
         for si in sigma:
             vd.append(si)
-        distr = [pgmlink.DistrId.GaussianPertubation,pgmlink.DistrId.PerturbAndMAP,pgmlink.DistrId.DiverseMbest,pgmlink.DistrId.MbestCPLEX][distributionId]
+        distr = [pgmlink.DistrId.GaussianPertubation,pgmlink.DistrId.PerturbAndMAP,pgmlink.DistrId.DiverseMbest,pgmlink.DistrId.MbestCPLEX,pgmlink.DistrId.ClassifierUncertainty][distributionId]
         up = pgmlink.UncertaintyParameter(iterations,distr,vd)
         
         tracker = pgmlink.ConsTracking(maxObj,
