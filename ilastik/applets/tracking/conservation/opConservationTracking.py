@@ -152,7 +152,7 @@ class OpConservationTracking(OpTrackingBase):
         #do with Uncertainty if this is possible
         withUncertainty = (self.DivisionUncertainty.ready() or not withDivisions) and self.DetectionUncertainty.ready()
         
-        ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
+        ts, empty_frame,annd = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
@@ -164,7 +164,6 @@ class OpConservationTracking(OpTrackingBase):
         
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'
-              
         
         if avgSize[0] > 0:
             median_obj_size = avgSize
@@ -200,11 +199,18 @@ class OpConservationTracking(OpTrackingBase):
                 
         iterations = int(self.NumIterations.value)
         
-        vd = pgmlink.VectorOfDouble()
+        distr = [pgmlink.DistrId.GaussianPertubation,pgmlink.DistrId.PerturbAndMAP,pgmlink.DistrId.DiverseMbest,pgmlink.DistrId.MbestCPLEX,pgmlink.DistrId.ClassifierUncertainty][distributionId]
         
+        #If distribution sigmas are to be estimated from data, determine Transition-sigma
+        #depending on average nearest neighbor distance
+        if distr==pgmlink.DistrId.ClassifierUncertainty:
+            sigma[3] = annd/12 # the constant factor 1/12 is just some arbitrary magic number I found reasonable...
+            parameters["sigma"]=sigma
+        vd = pgmlink.VectorOfDouble()
+        print sigma
         for si in sigma:
             vd.append(si)
-        distr = [pgmlink.DistrId.GaussianPertubation,pgmlink.DistrId.PerturbAndMAP,pgmlink.DistrId.DiverseMbest,pgmlink.DistrId.MbestCPLEX,pgmlink.DistrId.ClassifierUncertainty][distributionId]
+        
         up = pgmlink.UncertaintyParameter(iterations,distr,vd)
         
         tracker = pgmlink.ConsTracking(maxObj,

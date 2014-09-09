@@ -523,6 +523,19 @@ class OpTrackingBase(Operator):
         
         self.FilteredLabels.setValue(filtered_labels, check_changed=False)
         
-        return ts, empty_frame
+        rc_last_timestep = feats[max(feats.keys())][default_features_key]['RegionCenter']
+        if with_uncertainty:
+            annd = average_nearest_neighbor_distance(rc_last_timestep)
+        else:
+            annd = None
+        
+        return ts, empty_frame, annd
 
     
+def average_nearest_neighbor_distance(rc):
+    #calcualtes the average Euclidean distance to the nearest neighbor of the traxels in rc
+    annd = 0
+    for i1,regC1 in enumerate(rc):
+        min_dist = min(np.linalg.norm(regC1-regC2) for i2,regC2 in enumerate(rc) if i1!=i2)
+        annd+=min_dist
+    return annd/len(rc)
