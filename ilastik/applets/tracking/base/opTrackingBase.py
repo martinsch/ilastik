@@ -176,7 +176,7 @@ class OpTrackingBase(Operator):
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
         elif inputSlot is self.EventsVector:
-            self._setLabel2Color()
+            self._setLabel2Color(False)
         elif "NumIterations" in self.inputs and inputSlot is self.NumIterations:
             self.setupOutputs()
 
@@ -207,7 +207,9 @@ class OpTrackingBase(Operator):
             label2color[key].append({})
             mergers[key] = []
             mergers[key].append({})            
-            
+        
+        new_color = {}
+        
         for it in range(iterations):
             maxId = 2
             for i in range(time_range[0]):            
@@ -241,7 +243,9 @@ class OpTrackingBase(Operator):
                         label2color[it][-1][int(e[0])] = maxId
                         maxId += 1
                     else:
-                        label2color[it][-1][int(e[0])] = np.random.randint(1, 255)
+                        if int(e[0]) not in new_color:
+                            new_color[int(e[0])] = np.random.randint(1, 255)
+                        label2color[it][-1][int(e[0])] = new_color[int(e[0])]
     
                 for e in mov:                
                     if not label2color[it][-2].has_key(int(e[0])):
@@ -249,7 +253,9 @@ class OpTrackingBase(Operator):
                             label2color[it][-2][int(e[0])] = maxId
                             maxId += 1
                         else:
-                            label2color[it][-2][int(e[0])] = np.random.randint(1, 255)
+                            if int(e[0]) not in new_color:
+                                new_color[int(e[0])] = np.random.randint(1, 255)
+                            label2color[it][-2][int(e[0])] = new_color[int(e[0])]
                     label2color[it][-1][int(e[1])] = label2color[it][-2][int(e[0])]
                     moves_at.append(int(e[0]))
     
@@ -259,7 +265,9 @@ class OpTrackingBase(Operator):
                             label2color[it][-2][int(e[0])] = maxId
                             maxId += 1
                         else:
-                            label2color[it][-2][int(e[0])] = np.random.randint(1, 255)
+                            if int(e[0]) not in new_color:
+                                new_color[int(e[0])] = np.random.randint(1, 255)
+                            label2color[it][-2][int(e[0])] = new_color[int(e[0])]
                     ancestor_color = label2color[it][-2][int(e[0])]
                     label2color[it][-1][int(e[1])] = ancestor_color
                     label2color[it][-1][int(e[2])] = ancestor_color
@@ -273,7 +281,9 @@ class OpTrackingBase(Operator):
                             label2color[it][time_range[0] + int(e[2])][int(e[0])] = maxId
                             maxId += 1
                         else:
-                            label2color[it][time_range[0] + int(e[2])][int(e[0])] = np.random.randint(1, 255)
+                            if int(e[0]) not in new_color:
+                                new_color[int(e[0])] = np.random.randint(1, 255)
+                            label2color[it][time_range[0] + int(e[2])][int(e[0])] = new_color[int(e[0])]
                     label2color[it][-1][int(e[1])] = label2color[it][time_range[0] + int(e[2])][int(e[0])]
                     
             # last timestep
@@ -534,7 +544,7 @@ class OpTrackingBase(Operator):
     
 def average_nearest_neighbor_distance(rc):
     #calcualtes the average Euclidean distance to the nearest neighbor of the traxels in rc
-    annd = 0
+    annd = 0.
     for i1,regC1 in enumerate(rc):
         min_dist = min(np.linalg.norm(regC1-regC2) for i2,regC2 in enumerate(rc) if i1!=i2)
         annd+=min_dist
