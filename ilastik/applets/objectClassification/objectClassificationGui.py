@@ -782,6 +782,13 @@ class ObjectClassificationGui(LabelingGui):
                 print( "probabilities:  {}".format(prob) )
                 print( "prediction:     {}".format(pred) )
 
+                if 'Variances' in self.op.outputs and self.op.Variances.ready():
+                    vars = self.op.Variances([t]).wait()[t]
+                    var = 'none'
+                    if len(vars) >= obj:
+                        var = vars[obj]
+                    print( "variances:   {}".format(var))
+
             
             print( "------------------------------------------------------------" )
         elif action.text()==clearlabel:
