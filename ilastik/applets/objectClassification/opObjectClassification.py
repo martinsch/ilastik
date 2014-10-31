@@ -807,12 +807,7 @@ class OpObjectTrain(Operator):
             avg_oob = numpy.mean(classifier.oobs)
             logger.info("training finished, average out-of-bag error: {}".format(avg_oob))
         elif classifierType == GaussianProcessClassifier:
-            #GPy.kern.rbf(input_dim=1, variance=1., lengthscale=1.)
-            classifier_factory = GaussianProcessClassifierFactory(kernel = None,
-                                                                  num_inducing =  100,
-                                                                  normalize_Y = True,
-                                                                  normalize_X = True
-                                                                  )
+            classifier_factory = GaussianProcessClassifierFactory( )
             classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix)
         else:
             raise valueError,"the classifier class '{}' is unknown to ilastik".format(classifierType)
