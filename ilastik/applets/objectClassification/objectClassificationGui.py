@@ -765,13 +765,12 @@ class ObjectClassificationGui(LabelingGui):
                     ft = numpy.asarray(value.squeeze())[obj]
                     print( "{}: {}".format(featname, ft) )
 
-            if len(selected)>0 and label!='none':
+            if len(selected)>0:
+                pred = 'none'
                 if self.op.Predictions.ready():
                     preds = self.op.Predictions([t]).wait()[t]
                     if len(preds) >= obj:
                         pred = int(preds[obj])
-                else:
-                    pred = 'none'
                 
                 prob = 'none'
                 if self.op.Probabilities.ready():
@@ -782,12 +781,12 @@ class ObjectClassificationGui(LabelingGui):
                 print( "probabilities:  {}".format(prob) )
                 print( "prediction:     {}".format(pred) )
 
-                if 'Variances' in self.op.outputs and self.op.Variances.ready():
-                    vars = self.op.Variances([t]).wait()[t]
+                if 'Uncertainty' in self.op.outputs and self.op.Uncertainty.ready():
+                    vars = self.op.Uncertainty([t]).wait()[t]
                     var = 'none'
                     if len(vars) >= obj:
                         var = vars[obj]
-                    print( "variances:   {}".format(var))
+                    print( "uncertainty:   {}".format(var))
 
             
             print( "------------------------------------------------------------" )
