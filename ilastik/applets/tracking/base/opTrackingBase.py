@@ -370,7 +370,7 @@ class OpTrackingBase(Operator):
                 raise Exception, "Classifier not yet ready. Did you forget to train the Division Detection Classifier?"
             divProbs = self.DivisionProbabilities(time_range).wait()
             if with_uncertainty:
-                divUnc = self.DivisionUncertainty(time_range).wait()
+                divUncertainty = self.DivisionUncertainty(time_range).wait()
         
         if with_local_centers:
             localCenters = self.RegionLocalCenters(time_range).wait()
@@ -380,7 +380,7 @@ class OpTrackingBase(Operator):
                 raise Exception, "Classifier not yet ready. Did you forget to train the Object Count Classifier?"
             detProbs = self.DetectionProbabilities(time_range).wait()
             if with_uncertainty:
-                detUnc = self.DetectionUncertainty(time_range).wait()
+                detUncertainty = self.DetectionUncertainty(time_range).wait()
             
         logger.info( "filling traxelstore" )
         ts = pgmlink.TraxelStore()
@@ -454,24 +454,37 @@ class OpTrackingBase(Operator):
 
                 if with_div:
                     tr.add_feature_array("divProb", 1)
-                    # idx+1 because rc and ct start from 1, divProbs starts from 0
+                    assert len(divProbs[t][idx+1]) == 2
                     tr.set_feature_value("divProb", 0, float(divProbs[t][idx+1][1]))
+
                     if with_uncertainty:
-                        tr.add_feature_array("divUnc",1)
-                        tr.set_feature_value("divUnc",0,float(divUnc[t][idx+1]))
+                        # special case: 2 classes only has one variance
+                        assert len(divUncertainty[t][idx+1]) == 1
+                        tr.add_feature_array("divProb_Var", 1)
+                        tr.set_feature_value("divProb_Var", 0, float(divUncertainty[t][idx+1]))
+
                 if with_classifier_prior:
                     tr.add_feature_array("detProb", len(detProbs[t][idx+1]))
-                    
                     for i, v in enumerate(detProbs[t][idx+1]):
-                        val = float(v)
-                        if val < 0.0000001:
-                            val = 0.0000001
-                        if val > 0.99999999:
-                            val = 0.99999999
                         tr.set_feature_value("detProb", i, float(v))
-                    
-                    tr.add_feature_array("detUnc",1)
-                    tr.set_feature_value("detUnc",0,float(detUnc[t][idx+1]))
+
+                    if with_uncertainty:
+                        tr.add_feature_array("detProb_Var", len(detUncertainty[t][idx+1]))
+                        for i, v in enumerate(divUncertainty[t][idx+1]):
+                            tr.set_feature_value("detProb_Var", i, v)
+
+                    # tr.add_feature_array("detProb", len(detProbs[t][idx+1]))
+                    #
+                    # for i, v in enumerate(detProbs[t][idx+1]):
+                    #     val = float(v)
+                    #     if val < 0.0000001:
+                    #         val = 0.0000001
+                    #     if val > 0.99999999:
+                    #         val = 0.99999999
+                    #     tr.set_feature_value("detProb", i, float(v))
+                    #
+                    # tr.add_feature_array("detUnc",1)
+                    # tr.set_feature_value("detUnc",0,float(detUnc[t][idx+1]))
                         
                 
                 # FIXME: check whether it is 2d or 3d data!
