@@ -26,18 +26,31 @@ from ilastik.applets.base.appletSerializer import \
 
 class SerialDictSlotWithoutDeserialization(SerialDictSlot):
     
-    def __init__(self, slot, **kwargs):
-        super(SerialDictSlotWithoutDeserialization, self).__init__(slot, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(SerialDictSlotWithoutDeserialization, self).__init__(*args, **kwargs)
         #self.mainOperator = mainOperator
     
-    def serialize(self, group):
+    def serialize(self, *args):
         #if self.slot.ready() and self.mainOperator._predict_enabled:
-        return SerialDictSlot.serialize(self, group)
+        return SerialDictSlot.serialize(self, *args)
     
-    def deserialize(self, group):
+    def deserialize(self, *args, **kwargs):
         # Do not deserialize this slot
         pass
 
+
+class SerialClassifierSlotWithoutDeserialization(SerialClassifierSlot):
+    
+    def __init__(self, *args, **kwargs):
+        super(SerialClassifierSlotWithoutDeserialization, self).__init__(*args, **kwargs)
+        #self.mainOperator = mainOperator
+    
+    def serialize(self, *args):
+        #if self.slot.ready() and self.mainOperator._predict_enabled:
+        return SerialClassifierSlot.serialize(self, *args)
+ 
+    def deserialize(self, *args, **kwargs):
+        pass
 
 class ObjectClassificationSerializer(AppletSerializer):
     # FIXME: predictions can only be saved, not loaded, because it
@@ -51,17 +64,20 @@ class ObjectClassificationSerializer(AppletSerializer):
             SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
             SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
             SerialDictSlot(operator.LabelInputs, transform=int),
-            SerialClassifierSlot(operator.Classifier,
-                                 operator.classifier_cache,
-                                 name="ClassifierForests"),
+            #SerialClassifierSlot(operator.Classifier,
+            #                     operator.classifier_cache,
+            #                     name="ClassifierForests"),
+            SerialClassifierSlotWithoutDeserialization(operator.Classifier,
+                                  operator.classifier_cache,
+                                  name="ClassifierForests"),
             SerialDictSlot(operator.CachedProbabilities,
                            operator.InputProbabilities,
                            transform=int),
             SerialDictSlot(operator.CachedUncertainty,
                            operator.InputUncertainty,
                            transform=int),
-            #SerialDictSlotWithoutDeserialization(operator.Probabilities, transform=str),
-            #SerialDictSlotWithoutDeserialization(operator.Uncertainty, transform=str)
+            SerialDictSlotWithoutDeserialization(operator.Probabilities, transform=str),
+            SerialDictSlotWithoutDeserialization(operator.Uncertainty, transform=str)
         ]
 
         super(ObjectClassificationSerializer, self ).__init__(topGroupName,
