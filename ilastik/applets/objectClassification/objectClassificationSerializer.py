@@ -28,7 +28,7 @@ class SerialDictSlotWithoutDeserialization(SerialDictSlot):
     
     def __init__(self, slot, **kwargs):
         super(SerialDictSlotWithoutDeserialization, self).__init__(slot, **kwargs)
-        self.mainOperator = mainOperator
+        #self.mainOperator = mainOperator
     
     def serialize(self, group):
         #if self.slot.ready() and self.mainOperator._predict_enabled:
@@ -60,8 +60,8 @@ class ObjectClassificationSerializer(AppletSerializer):
             SerialDictSlot(operator.CachedUncertainty,
                            operator.InputUncertainty,
                            transform=int),
-            SerialDictSlotWithoutDeserialization(operator.Probabilities, transform=str),
-            SerialDictSlotWithoutDeserialization(operator.Uncertainty, transform=str)
+            #SerialDictSlotWithoutDeserialization(operator.Probabilities, transform=str),
+            #SerialDictSlotWithoutDeserialization(operator.Uncertainty, transform=str)
         ]
 
         super(ObjectClassificationSerializer, self ).__init__(topGroupName,
