@@ -18,7 +18,11 @@ class TransitionClassifier:
         based on transition classifier (gaussian process classifier)
         """
         x = self.getFeatures(traxel1, traxel2)
-        return self.classifier.predict_probabilities(x, with_variance=True)
+        prob, var = self.classifier.predict_probabilities(x, with_variance=True)
+        prob = prob.squeeze().tolist()
+        var = var.squeeze().tolist()
+
+        return prob, var
 
 def mk_traxel(x, y, z, id, t, fs):
     traxel = pgmlink.Traxel()

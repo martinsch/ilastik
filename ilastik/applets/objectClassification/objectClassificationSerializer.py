@@ -26,7 +26,7 @@ from ilastik.applets.base.appletSerializer import \
 
 class SerialDictSlotWithoutDeserialization(SerialDictSlot):
     
-    def __init__(self, slot, mainOperator, **kwargs):
+    def __init__(self, slot, **kwargs):
         super(SerialDictSlotWithoutDeserialization, self).__init__(slot, **kwargs)
         self.mainOperator = mainOperator
     
@@ -60,7 +60,8 @@ class ObjectClassificationSerializer(AppletSerializer):
             SerialDictSlot(operator.CachedUncertainty,
                            operator.InputUncertainty,
                            transform=int),
-            #SerialDictSlotWithoutDeserialization(operator.Probabilities, operator, transform=str)
+            SerialDictSlotWithoutDeserialization(operator.Probabilities, transform=str),
+            SerialDictSlotWithoutDeserialization(operator.Uncertainty, transform=str)
         ]
 
         super(ObjectClassificationSerializer, self ).__init__(topGroupName,
