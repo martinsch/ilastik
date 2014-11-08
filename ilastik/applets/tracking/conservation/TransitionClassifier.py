@@ -3,14 +3,14 @@ import numpy as np
 class TransitionClassifier:
     def __init__(self,classifier, selected_features):
         self.classifier = classifier
-        if len(selected_features) != 1 or selected_features[0] != 'SquaredDistance<com>':
+        if len(selected_features) != 1 or selected_features[0] != 'SquaredDifference<RegionCenter>':
             print 'selected_features', selected_features
             raise NotImplementedError, 'other features are not supported yet'
         
     @staticmethod
     def getFeatures(traxel1, traxel2):
         # only squared distances for now
-        return np.linalg.norm( np.array(traxel1.get_feature_array("com")) - np.array(traxel2.get_feature_array("com")) )
+        return pow(np.linalg.norm( np.array(traxel1.get_feature_array("RegionCenter")) - np.array(traxel2.get_feature_array("RegionCenter")) ),2.)
 
     def predict(self, traxel1, traxel2):
         """
