@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import logging
+
 logger = logging.getLogger(__name__)
 
 from abc import ABCMeta
@@ -464,10 +465,15 @@ class SerialClassifierSlot(SerialSlot):
         try:
             classifier_type = pickle.loads( classifierGroup['pickled_type'][()] )
         except KeyError:
-            # For compatibility with old project files, choose the default classifier.
-            from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
-            classifier_type = ParallelVigraRfLazyflowClassifier
-        
+            if 'GPCpickle_000' in classifierGroup.keys():
+                from lazyflow.classifiers.gaussianProcessClassifier import GaussianProcessClassifier
+                classifier_type = GaussianProcessClassifier()
+            else:
+                # For compatibility with old project files, choose the default classifier.
+                from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
+                classifier_type = ParallelVigraRfLazyflowClassifier
+
+
         try:
             classifier = classifier_type.deserialize_hdf5( classifierGroup )
         except:
