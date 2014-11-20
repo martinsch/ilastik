@@ -83,3 +83,6 @@ class ObjectClassificationSerializer(AppletSerializer):
         super(ObjectClassificationSerializer, self ).__init__(topGroupName,
                                                               slots=serialSlots,
                                                               operator=operator)
+        
+    def isDirty(self):
+        return True

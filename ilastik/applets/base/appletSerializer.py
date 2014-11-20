@@ -590,12 +590,15 @@ class SerialDictSlot(SerialSlot):
         self.transform = transform
 
     def _saveValue(self, group, name, value):
-        sg = group.create_group(name)
-        for key, v in value.iteritems():
-            if isinstance(v, dict):
-                self._saveValue(sg, key, v)
-            else:
-                sg.create_dataset(str(key), data=v)
+        try:
+            sg = group.create_group(name)
+            for key, v in value.iteritems():
+                if isinstance(v, dict):
+                    self._saveValue(sg, key, v)
+                else:
+                    sg.create_dataset(str(key), data=v)
+        except:
+            print 'CRASHED while saving:', group, name
 
 
     def _getValueHelper(self, subgroup):
